@@ -1077,7 +1077,10 @@
 
 (defmethod process-change :set-tokens-source
   [data {:keys [library-id]}]
-  (cfo/set-tokens-source data library-id))
+  (if (nil? library-id)
+    (cfo/set-tokens-source data library-id)
+    (-> (cfo/ensure-tokens-status data)
+        (cfo/set-tokens-source library-id))))
 
 ;; === Operations
 

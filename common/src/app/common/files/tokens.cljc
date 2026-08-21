@@ -462,6 +462,13 @@
     :always
     (update :tokens-status #(or % (ctos/make-tokens-status)))))
 
+(defn ensure-tokens-status
+  "Ensure file-data has a :tokens-status, creating it empty if necessary."
+  [file-data]
+  (cond-> file-data
+    (nil? (:tokens-status file-data))
+    (update :tokens-status #(or % (ctos/make-tokens-status)))))
+
 (defn get-tokens-source
   "Return the current value of :tokens-source attribute."
   [file-data]
