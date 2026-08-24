@@ -176,9 +176,9 @@
                (nil? (dom/query doc "parsererror")))
       root)))
 
-(defn prefetch-preview-sprite!
+(defn prefetch-preview-sprite
   "Fetch the font-preview sprite markup and cache it in memory (no DOM yet — see
-  `attach-preview-sprite!`). Idempotent: fetches only when nothing is cached yet
+  `attach-preview-sprite`). Idempotent: fetches only when nothing is cached yet
   (`:idle`) or a previous attempt failed (`:error`); no-op while `:loading` or
   `:ready`."
   []
@@ -202,7 +202,7 @@
             (log/wrn :hint "cannot load font preview sprite" :cause cause)
             (reset-preview-sprite-error!))))))
 
-(defn attach-preview-sprite!
+(defn attach-preview-sprite
   "Materialize the cached sprite into the DOM (hidden) so rows can reference its
   glyph groups via `<use>`, and record the covered font ids. Returns the injected
   node (pass it to `detach-preview-sprite!` on close), or nil if not ready / the
@@ -224,13 +224,13 @@
           (reset-preview-sprite-error!)
           nil)))))
 
-(defn detach-preview-sprite!
-  "Remove the sprite node injected by `attach-preview-sprite!` from the DOM. The
+(defn detach-preview-sprite
+  "Remove the sprite node injected by `attach-preview-sprite` from the DOM. The
   cached markup and `:ids` stay, so reopening re-attaches without a refetch."
   [node]
   (dom/remove! node))
 
-(defn- add-font-css!
+(defn- add-font-css
   "Creates a style element and attaches it to the dom."
   [id css]
   (let [node (dom/create-element "style")]
@@ -294,7 +294,7 @@
       (->> (request-gfont-css url)
            (rx/map process-gfont-css)
            (rx/tap #(on-loaded id))
-           (rx/subs! (partial add-font-css! id)
+           (rx/subs! (partial add-font-css id)
                      #(when (fn? on-failed) (on-failed %))))
       nil)))
 
@@ -334,7 +334,7 @@
   (when (globals/browser?)
     (log/dbg :hint "load-font" :font-id id :backend "custom")
     (let [css (generate-custom-font-css font)]
-      (add-font-css! id css)
+      (add-font-css id css)
       (when (fn? on-loaded)
         (on-loaded)))))
 
