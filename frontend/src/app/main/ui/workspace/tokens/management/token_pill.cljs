@@ -182,6 +182,12 @@
   [{:keys [on-click token on-context-menu selected-shapes is-selected-inside-layout active-theme-tokens]}]
   (let [{:keys [name value type]} token
         resolved-token (get active-theme-tokens (:name token))
+        display-value  (-> (or (:resolved-value resolved-token)
+                               (:resolved-value token)
+                               value)
+                           (dwtf/format-token-value)
+                           (str/replace #"\s+" " ")
+                           (str/trim))
         errors         (:errors resolved-token)
 
         has-selected?  (pos? (count selected-shapes))
@@ -331,4 +337,8 @@
           [:span {:class (stl/css :last-name-wrapper)} last-part]])
        [:span {:class (stl/css :name-wrapper)
                :aria-label name}
-        name])]))
+        name])
+     [:span {:class (stl/css :token-value)
+             :data-testid "token-value"
+             :aria-label (dm/str "Resolved value: " display-value)}
+      display-value]]))

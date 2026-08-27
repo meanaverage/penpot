@@ -85,3 +85,43 @@
       (let [text-shape (.-shape range)]
         (t/is (shape/shape-proxy? text-shape))
         (t/is (= shape-id (aget text-shape "$id")))))))
+
+(t/deftest text-letter-spacing-accepts-negative-tracking
+  (let [file-id  (random-uuid)
+        page-id  (random-uuid)
+        shape-id (random-uuid)
+        text     (shape/shape-proxy plugin-id file-id page-id shape-id)
+        captured (atom nil)]
+    (plugins.text/add-text-props text plugin-id)
+    (with-redefs [r/check-permission (constantly true)
+                  u/page-active? (constantly true)
+                  dwt/update-attrs
+                  (fn [id attrs]
+                    (reset! captured {:id id :attrs attrs})
+                    :update-attrs)
+                  st/emit! mock/noop]
+      (set! (.-letterSpacing text) "-1.8")
+      (t/is (= shape-id (:id @captured)))
+      (t/is (= "-1.8" (get-in @captured [:attrs :letter-spacing]))))))
+
+(t/deftest text-range-letter-spacing-accepts-negative-tracking
+  (let [file-id  (random-uuid)
+        page-id  (random-uuid)
+        shape-id (random-uuid)
+        range    (plugins.text/text-range-proxy plugin-id file-id page-id shape-id 1 4)
+        captured (atom nil)]
+    (with-redefs [r/check-permission (constantly true)
+                  u/page-active? (constantly true)
+                  dwt/update-text-range
+                  (fn [id start end attrs]
+                    (reset! captured {:id id
+                                      :start start
+                                      :end end
+                                      :attrs attrs})
+                    :update-text-range)
+                  st/emit! mock/noop]
+      (set! (.-letterSpacing range) "-1.8")
+      (t/is (= shape-id (:id @captured)))
+      (t/is (= 1 (:start @captured)))
+      (t/is (= 4 (:end @captured)))
+      (t/is (= "-1.8" (get-in @captured [:attrs :letter-spacing]))))))

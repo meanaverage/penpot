@@ -13,9 +13,12 @@
    [app.common.types.tokens-lib :as ctob]
    [app.common.uuid :as uuid]
    [app.main.data.tokenscript :as ts]
+   [app.main.data.workspace.tokens.application :as dwta]
    [app.main.data.workspace.tokens.library-edit :as dwtl]
    [app.main.store :as st]
    [app.plugins.api :as api]
+   [app.plugins.shape :as pshape]
+   [app.plugins.system-events :as se]
    [app.plugins.tokens :as ptok]
    [app.plugins.utils :as u]
    [cljs.test :as t :include-macros true]
@@ -40,14 +43,12 @@
 ;;    "border-radius-top-left" fell through to the identity branch
 ;;    unchanged, so the downstream `cto/token-attr?` predicate (which
 ;;    checks against a set of keywords) returned false.
-;; 2. The `applyToken` / `applyToShapes` / `applyToSelected` schemas used
-;;    plain `[:set ...]`, which does not have a `:decode/json`
-;;    transformer for the JS array → Clojure set coercion. Penpot's
-;;    custom `[::sm/set ...]` does. Switching to the registered set type
-;;    lets the standard JSON decoder pipeline turn the JS argument into
-;;    a set of strings, after which the `[:and ::sm/keyword [:fn
-;;    token-attr?]]` element schema coerces each string to a keyword and
-;;    validates it.
+;; 2. The `applyToken` / `applyToShapes` / `applyToSelected` schemas need an
+;;    internal set, while the public API takes an array. The registered
+;;    `[::sm/set ...]` decoder handles same-realm arrays, but arrays arriving
+;;    from a sandboxed plugin iframe may not satisfy the host realm's array or
+;;    collection predicates. The API boundary now normalizes finite array-like
+;;    values before schema validation.
 ;;
 ;; These helper-level tests pin the string-friendly conversion contract;
 ;; the schema-level fix is covered by the existing plugin integration
@@ -68,7 +69,11 @@
   (t/is (= :r1 (ptok/token-attr-plugin->token-attr :border-radius-top-left)))
   (t/is (= :r2 (ptok/token-attr-plugin->token-attr :border-radius-top-right)))
   (t/is (= :r3 (ptok/token-attr-plugin->token-attr :border-radius-bottom-right)))
-  (t/is (= :r4 (ptok/token-attr-plugin->token-attr :border-radius-bottom-left))))
+  (t/is (= :r4 (ptok/token-attr-plugin->token-attr :border-radius-bottom-left)))
+  ;; The public Plugin API deliberately uses the DTCG token type spelling
+  ;; `fontFamilies`, while Penpot stores the applied property as singular
+  ;; `:font-family`.
+  (t/is (= :font-family (ptok/token-attr-plugin->token-attr :font-families))))
 
 (t/deftest token-attr-plugin->token-attr-resolves-padding-margin-side-aliases
   (t/is (= :p1 (ptok/token-attr-plugin->token-attr :padding-top)))
@@ -84,6 +89,8 @@
   ;; This is the actual regression — JS plugin calls supply strings.
   (t/is (= :fill (ptok/token-attr-plugin->token-attr "fill")))
   (t/is (= :stroke-color (ptok/token-attr-plugin->token-attr "stroke-color")))
+  (t/is (= :stroke-color (ptok/token-attr-plugin->token-attr "strokeColor")))
+  (t/is (= :font-family (ptok/token-attr-plugin->token-attr "fontFamilies")))
   ;; Verbose plugin aliases work via the string path too.
   (t/is (= :r1 (ptok/token-attr-plugin->token-attr "border-radius-top-left")))
   (t/is (= :m3 (ptok/token-attr-plugin->token-attr "margin-bottom"))))
@@ -99,8 +106,29 @@
   ;; predicate layer the plugin schemas call into.
   (t/is (true? (boolean (ptok/token-attr? "fill"))))
   (t/is (true? (boolean (ptok/token-attr? "stroke-color"))))
+  (t/is (true? (boolean (ptok/token-attr? "strokeColor"))))
+  (t/is (true? (boolean (ptok/token-attr? "fontFamilies"))))
   (t/is (true? (boolean (ptok/token-attr? "r1"))))
   (t/is (true? (boolean (ptok/token-attr? "m3")))))
+
+(t/deftest normalize-token-attrs-accepts-sandbox-array-like-values
+  ;; A plain array-like object reproduces the important cross-realm property:
+  ;; it has indexed values and a finite length, but is not a host collection.
+  (let [attrs #js {"0" "fill"
+                   "1" "strokeColor"
+                   "length" 2}]
+    (t/is (= #{"fill" "strokeColor"}
+             (ptok/normalize-token-attrs attrs)))))
+
+(t/deftest decode-token-application-args-preserves-proxy-and-normalizes-attrs
+  (let [token #js {"kind" "token-proxy"}
+        attrs #js {"0" "borderRadiusTopLeft"
+                   "length" 1}
+        decoded (ptok/decode-token-application-args
+                 #js [token attrs]
+                 1)]
+    (t/is (identical? token (first decoded)))
+    (t/is (= #{"borderRadiusTopLeft"} (second decoded)))))
 
 (t/deftest shape-apply-token-accepts-padding-top
   (t/async
@@ -148,6 +176,30 @@
                              :objects shape-id :applied-tokens :p1])))
            (done)))
        0))))
+
+(t/deftest shape-apply-token-accepts-public-font-families-property
+  (let [plugin-id "00000000-0000-0000-0000-000000000000"
+        file-id   (uuid/next)
+        page-id   (uuid/next)
+        shape-id  (uuid/next)
+        set-id    (uuid/next)
+        token-id  (uuid/next)
+        token     (ctob/make-token :id token-id
+                                   :name "type.family.primary"
+                                   :type :font-family
+                                   :value ["Instrument Sans"])
+        ^js shape (pshape/shape-proxy plugin-id file-id page-id shape-id)
+        ^js proxy (ptok/token-proxy plugin-id file-id set-id token-id)
+        captured  (atom nil)]
+    (with-redefs [u/locate-token    (constantly token)
+                  dwta/toggle-token (fn [attrs]
+                                      (reset! captured attrs)
+                                      :toggle-token)
+                  se/add-event      (fn [event _plugin-id] event)
+                  st/emit!          mock/noop]
+      (.applyToken shape proxy #js ["fontFamilies"])
+      (t/is (= #{:font-family} (:attrs @captured)))
+      (t/is (= [shape-id] (:shape-ids @captured))))))
 
 (t/deftest token-attr?-rejects-unknown-input
   (t/is (false? (boolean (ptok/token-attr? :not-a-real-attr))))
@@ -246,6 +298,96 @@
         (t/is (ptok/token-set-proxy? dup))
         (t/is (= (str dup-id) (.-id dup)))))))
 
+(t/deftest token-set-add-token-coerces-a-numeric-font-weight
+  ;; DTCG represents variable font weights as numbers. The public Plugin API
+  ;; accepts numeric token inputs and stores them in Penpot's canonical text
+  ;; representation. Exercise the actual JS proxy boundary rather than only
+  ;; the DTCG importer's materialization helper.
+  (let [plugin-id  "plugin-id"
+        file-id    (cthi/new-id! :file)
+        set-id     (cthi/new-id! :set)
+        tokens-lib (-> (ctob/make-tokens-lib)
+                       (ctob/add-set
+                        (ctob/make-token-set :id set-id :name "Typography")))
+        captured   (atom nil)]
+    (with-redefs [u/locate-tokens-lib (constantly tokens-lib)
+                  dwtl/create-token
+                  (fn
+                    ([token]
+                     (reset! captured {:set-id nil :token token})
+                     :create-token)
+                    ([created-set-id token]
+                     (reset! captured {:set-id created-set-id :token token})
+                     :create-token))
+                  se/add-event (fn [event _plugin-id] event)
+                  st/emit! mock/noop]
+      (let [set-proxy   (ptok/token-set-proxy plugin-id file-id set-id)
+            token-proxy (.addToken set-proxy
+                                   #js {"type" "fontWeights"
+                                        "name" "type.weight.medium"
+                                        "value" 560})]
+        (t/is (ptok/token-proxy? token-proxy))
+        (t/is (= set-id (:set-id @captured)))
+        (t/is (= :font-weight (get-in @captured [:token :type])))
+        (t/is (= "560" (get-in @captured [:token :value])))))))
+
+(t/deftest token-value-update-normalizes-public-dtcg-values
+  ;; Re-importing an existing component uses Token.value setters rather than
+  ;; TokenSet.addToken. Keep the update boundary symmetric with creation.
+  (t/is (= "560" (ptok/normalize-token-value :font-weight 560)))
+  (t/is (= [{:color "#000000"
+             :inset false
+             :offset-x "1px"
+             :offset-y "2px"
+             :spread "0px"
+             :blur "4px"}]
+           (ptok/normalize-token-value
+            :shadow
+            #js [#js {"color" "#000000"
+                      "inset" "false"
+                      "offsetX" "1px"
+                      "offsetY" "2px"
+                      "spread" "0px"
+                      "blur" "4px"}])))
+  (t/is (= {:font-family ["{font.family}"]
+            :font-size "{font.size}"
+            :font-weight "{font.weight}"
+            :letter-spacing "0px"
+            :line-height "1.2"
+            :text-case "none"
+            :text-decoration "none"}
+           (ptok/normalize-token-value
+            :typography
+            #js {"fontFamilies" "{font.family}"
+                 "fontSizes" "{font.size}"
+                 "fontWeight" "{font.weight}"
+                 "letterSpacing" "0px"
+                 "lineHeight" "1.2"
+                 "textCase" "none"
+                 "textDecoration" "none"}))))
+
+(t/deftest token-value-getter-projects-public-composite-shapes
+  (let [file-id  (cthi/new-id! :file)
+        set-id   (cthi/new-id! :set)
+        token-id (cthi/new-id! :token)]
+    (with-redefs [u/locate-token
+                  (constantly {:id token-id
+                               :name "type.heading"
+                               :type :typography
+                               :value {:font-family ["{font.family}"]
+                                       :font-size "{font.size}"
+                                       :font-weight "{font.weight}"
+                                       :letter-spacing "0px"
+                                       :line-height "1.2"
+                                       :text-case "none"
+                                       :text-decoration "none"}})]
+      (let [value (.-value (ptok/token-proxy "plugin-id" file-id set-id token-id))]
+        (t/is (= ["{font.family}"] (vec (aget value "fontFamilies"))))
+        (t/is (= "{font.size}" (aget value "fontSizes")))
+        (t/is (= "{font.weight}" (aget value "fontWeight")))
+        (t/is (= "0px" (aget value "letterSpacing")))
+        (t/is (= "1.2" (aget value "lineHeight")))))))
+
 (t/deftest theme-add-set-and-remove-set-use-the-set-name
   (let [file-id  (cthi/new-id! :file)
         theme-id (cthi/new-id! :theme)
@@ -289,6 +431,30 @@
         (t/is (= set-id (:set-id @captured)))
         (t/is (= token-id (:token-id @captured)))
         (t/is (= ["Inter" "Arial"] (get-in @captured [:attrs :value])))))))
+
+(t/deftest token-description-event-uses-the-calling-plugin-id
+  (let [plugin-id "00000000-0000-0000-0000-000000000000"
+        file-id   (uuid/next)
+        set-id    (uuid/next)
+        token-id  (uuid/next)
+        captured  (atom nil)]
+    (with-redefs [u/locate-token    (constantly {:id token-id
+                                                 :name "color.panel"
+                                                 :type :color
+                                                 :value "#ffffff"})
+                  dwtl/update-token (mock/stub
+                                     (fn [_set-id _token-id attrs]
+                                       {:attrs attrs}))
+                  se/add-event      (mock/stub
+                                     (fn [event event-plugin-id]
+                                       (reset! captured {:event event
+                                                         :plugin-id event-plugin-id})
+                                       event))
+                  st/emit!          mock/noop]
+      (let [token (ptok/token-proxy plugin-id file-id set-id token-id)]
+        (set! (.-description token) "Panel surface")
+        (t/is (= plugin-id (:plugin-id @captured)))
+        (t/is (= "Panel surface" (get-in @captured [:event :attrs :description])))))))
 
 (t/deftest typography-token-resolved-value-is-plugin-array-shape
   (let [token (ctob/make-token
@@ -399,4 +565,3 @@
         (t/is (empty? @emitted))
         (t/is (= 2 (count @invalid)))
         (t/is (every? #(= :error (first %)) @invalid))))))
-

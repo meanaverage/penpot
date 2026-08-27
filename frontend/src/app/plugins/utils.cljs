@@ -351,7 +351,8 @@
       (cond
         ;; If it's a clojure error we throw as a validation error
         (and throw? explain)
-        (throw-not-valid :error (error-messages explain))
+        (throw-not-valid :error (or (error-messages explain)
+                                    (pr-str explain)))
 
         ;; Unexpected errors we just propagate them
         throw?

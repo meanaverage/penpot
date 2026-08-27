@@ -160,4 +160,32 @@ describe('createSandbox', () => {
     expect(ses.safeReturn).toHaveBeenCalledWith('penpot result');
     expect(result).toBe('penpot result');
   });
+
+  it('should preserve the window receiver for structuredClone', () => {
+    const originalStructuredClone = window.structuredClone;
+    const receiverCheckedClone = vi.fn(function (this: Window, value: unknown) {
+      if (this !== window) throw new TypeError('Illegal invocation');
+      return JSON.parse(JSON.stringify(value));
+    });
+
+    Object.defineProperty(window, 'structuredClone', {
+      configurable: true,
+      value: receiverCheckedClone,
+    });
+
+    try {
+      const sandbox = createSandbox(mockPlugin);
+      const value = { nested: ['safe'] };
+
+      expect(sandbox.compartment.globalThis['structuredClone'](value)).toEqual(
+        value,
+      );
+      expect(receiverCheckedClone).toHaveBeenCalledOnce();
+    } finally {
+      Object.defineProperty(window, 'structuredClone', {
+        configurable: true,
+        value: originalStructuredClone,
+      });
+    }
+  });
 });

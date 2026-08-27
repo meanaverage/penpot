@@ -1,0 +1,13 @@
+{
+  "name": "SayHi component importer V2",
+  "description": "Manifest-driven DTCG 2025.10 component projection importer",
+  "code": "plugin.js?revision=20260826.2",
+  "version": 2,
+  "permissions": [
+    "content:read",
+    "content:write",
+    "library:read",
+    "library:write",
+    "allow:downloads"
+  ]
+}

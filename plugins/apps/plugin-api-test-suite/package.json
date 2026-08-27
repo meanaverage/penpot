@@ -14,7 +14,9 @@
     "lint": "eslint .",
     "gen:api": "tsx tools/gen-api-surface.ts",
     "test:ci": "pnpm run build:headless && tsx ci/run-ci.ts",
-    "test:ci:mocked": "pnpm run build:headless && MOCK_BACKEND=1 tsx ci/run-ci.ts"
+    "test:ci:mocked": "pnpm run build:headless && MOCK_BACKEND=1 tsx ci/run-ci.ts",
+    "test:sayhi-importer": "pnpm --filter sayhi-component-importer-plugin build && tsx ci/run-sayhi-importer.ts",
+    "test:sayhi-importer-v2": "pnpm --filter sayhi-component-importer-v2-plugin build && tsx ci/run-sayhi-importer-v2.ts"
   },
   "devDependencies": {
     "playwright": "^1.61.1"

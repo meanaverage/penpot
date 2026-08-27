@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from 'zod/v3';
 import { openUISchema } from '../models/open-ui-options.schema.js';
 import { createModal } from '../create-modal.js';
 

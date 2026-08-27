@@ -14,6 +14,9 @@
    [app.common.types.shape-tree :as ctst]
    [app.config :as cfg]
    [app.main.data.event :as ev]
+   [app.main.data.sayhi.web-materializer :as web-materializer]
+   [app.main.data.sayhi.web-materializer.contract :as web-materializer.contract]
+   [app.main.data.sayhi.web-preview :as web-preview]
    [app.main.fonts :as fonts]
    [app.main.refs :as refs]
    [app.main.store :as st]
@@ -114,6 +117,31 @@
         collapsed-markup? (contains? @collapsed* :markup)
 
         objects        (use-objects from)
+        source-shapes  shapes
+
+        web-object
+        (mf/use-memo
+         (mf/deps source-shapes objects)
+         (fn []
+           (web-preview/resolve-selected-web-object
+            objects
+            (mapv :id source-shapes))))
+
+        web-materialization
+        (mf/use-memo
+         (mf/deps objects web-object cfg/sayhi-web-materializer-mode)
+         (fn []
+           (when web-object
+             (web-materializer/materialize
+              {:mode cfg/sayhi-web-materializer-mode
+               :studio-uri cfg/sayhi-studio-uri
+               :objects objects
+               :web-object web-object}))))
+
+        portable-artifact
+        (when (= web-materializer.contract/portable-provider
+                 (:activeProvider web-materialization))
+          (:artifact web-materialization))
 
         shapes
         (mf/with-memo [shapes frame]
@@ -139,18 +167,22 @@
 
         style-code
         (mf/use-memo
-         (mf/deps fontfaces-css style-type shapes all-children cg/generate-style-code)
+         (mf/deps fontfaces-css style-type shapes all-children portable-artifact cg/generate-style-code)
          (fn []
            (dm/str
             fontfaces-css "\n"
-            (-> (cg/generate-style-code objects style-type shapes all-children)
-                (cb/format-code style-type)))))
+            (if (and portable-artifact (= style-type "css"))
+              (get-in portable-artifact [:document :styles])
+              (-> (cg/generate-style-code objects style-type shapes all-children)
+                  (cb/format-code style-type))))))
 
         markup-code
         (mf/use-memo
-         (mf/deps markup-type shapes images-data)
+         (mf/deps markup-type shapes images-data portable-artifact)
          (fn []
-           (cg/generate-formatted-markup-code objects markup-type shapes)))
+           (if (and portable-artifact (= markup-type "html"))
+             (get-in portable-artifact [:document :markup])
+             (cg/generate-formatted-markup-code objects markup-type shapes))))
 
         on-markup-copied
         (mf/use-fn

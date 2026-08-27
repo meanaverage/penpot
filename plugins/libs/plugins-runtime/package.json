@@ -10,7 +10,7 @@
   "typings": "./dist/index.d.ts",
   "type": "module",
   "scripts": {
-    "build": "vite build",
+    "build": "rm -rf ../node_modules/.vite/plugins-runtime && vite build",
     "build:watch": "vite build --watch --mode development",
     "preview": "vite preview",
     "lint": "eslint .",

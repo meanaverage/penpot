@@ -1,0 +1,100 @@
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+@use "../ds/typography.scss" as t;
+
+.web-preview {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  min-inline-size: 0;
+  min-block-size: 0;
+  overflow: hidden;
+  background: var(--color-background-primary);
+  color: var(--color-foreground-primary);
+}
+
+.web-preview-frame {
+  grid-area: 1 / 1;
+  inline-size: 100%;
+  block-size: 100%;
+  border: 0;
+  background: var(--color-background-primary);
+}
+
+.web-preview-status {
+  @include t.use-typography("body-medium");
+
+  z-index: 1;
+  grid-area: 1 / 1;
+  place-self: center;
+  padding: var(--sp-m) var(--sp-l);
+  border-radius: var(--sp-m);
+  background: var(--color-background-secondary);
+  color: var(--color-foreground-secondary);
+  pointer-events: none;
+}
+
+.web-preview-fidelity {
+  @include t.use-typography("body-small");
+
+  z-index: 2;
+  grid-area: 1 / 1;
+  place-self: start end;
+  margin: var(--sp-m);
+  padding: var(--sp-s) var(--sp-m);
+  border: 1px solid var(--color-accent-warning);
+  border-radius: var(--sp-s);
+  background: var(--color-background-primary);
+  color: var(--color-foreground-primary);
+  pointer-events: none;
+}
+
+.web-preview-provider-switch {
+  z-index: 3;
+  grid-area: 1 / 1;
+  place-self: start center;
+  display: flex;
+  gap: var(--sp-xxs);
+  margin: var(--sp-m);
+  padding: var(--sp-xxs);
+  border: 1px solid var(--color-background-quaternary);
+  border-radius: var(--sp-m);
+  background: var(--color-background-primary);
+  box-shadow: 0 4px 18px rgb(0 0 0 / 0.12);
+
+  button {
+    @include t.use-typography("body-small");
+
+    min-block-size: 2rem;
+    padding-inline: var(--sp-m);
+    border: 0;
+    border-radius: calc(var(--sp-m) - var(--sp-xxs));
+    background: transparent;
+    color: var(--color-foreground-secondary);
+    cursor: pointer;
+  }
+
+  button[aria-pressed="true"] {
+    background: var(--color-accent-primary);
+    color: var(--color-foreground-primary);
+  }
+}
+
+.web-preview-error {
+  place-self: center;
+  max-inline-size: 32rem;
+  padding: var(--sp-xxxl);
+  text-align: center;
+
+  h1 {
+    @include t.use-typography("title-large");
+  }
+
+  p {
+    @include t.use-typography("body-medium");
+
+    color: var(--color-foreground-secondary);
+  }
+}

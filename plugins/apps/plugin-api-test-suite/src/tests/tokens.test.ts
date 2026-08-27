@@ -106,6 +106,19 @@ describe('Tokens', () => {
       expect(set.getTokenById(token.id)).toBeDefined();
     });
 
+    test('numeric variable font weight is stored as text', (ctx) => {
+      const set = activeSet(ctx, unique('set'));
+      const token = set.addToken({
+        type: 'fontWeights',
+        name: unique('type.weight.'),
+        value: 560,
+      });
+      expect(token.type).toBe('fontWeights');
+      expect(token.value).toBe('560');
+      token.value = 710 as unknown as string;
+      expect(token.value).toBe('710');
+    });
+
     test('duplicate and remove a set', (ctx) => {
       const set = activeSet(ctx, unique('set'));
       const dup = set.duplicate();

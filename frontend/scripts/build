@@ -10,6 +10,9 @@ export BUILD_DATE=$(date -R);
 export BUILD_TS=$(date +%s);
 
 export VERSION=${1:-develop};
+# VERSION_TAG is the browser cache and compiled-bundle compatibility identity.
+# Keep this entire production build in one process; never resume later stages
+# in another shell without carrying this exact value forward.
 export VERSION_TAG="${VERSION}-${BUILD_TS}";
 
 # Some cljs reacts on this environment variable for define more
@@ -33,11 +36,15 @@ pushd ../render-wasm;
 ./build
 popd
 
-pushd ../mcp;
-rm -rf node_modules;
-./scripts/setup
-WS_URI="/mcp/ws" pnpm run --filter "mcp-plugin" build
-popd;
+if [ -d ../mcp ]; then
+    pushd ../mcp;
+    rm -rf node_modules;
+    ./scripts/setup
+    WS_URI="/mcp/ws" pnpm run --filter "mcp-plugin" build
+    popd;
+else
+    echo "MCP source is absent; skipping the optional bundled MCP plugin.";
+fi
 
 pushd ../plugins
 rm -rf node_modules;
@@ -60,6 +67,9 @@ rsync -avr resources/public/ target/dist/
 rsync -avr ../plugins/dist/apps/ target/dist/plugins/;
 
 # Include the MCP plugin on the bundle
-mkdir -p target/dist/plugins/mcp;
-rsync -avr ../mcp/packages/plugin/dist/ target/dist/plugins/mcp/;
+if [ -d ../mcp/packages/plugin/dist ]; then
+    mkdir -p target/dist/plugins/mcp;
+    rsync -avr ../mcp/packages/plugin/dist/ target/dist/plugins/mcp/;
+fi
 
+node ./scripts/verify-build-version-tag.mjs target/dist "$VERSION_TAG";

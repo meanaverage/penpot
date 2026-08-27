@@ -34,6 +34,12 @@
 
 ### 🩹 Fixes
 
+- **plugins-runtime**: The sandboxed `structuredClone` global now preserves its required `Window` receiver instead of throwing `Illegal invocation` inside plugins.
+- **plugins-runtime**: Token-description updates now attach the calling plugin UUID instead of the invalid literal `:plugin-id`, and manifest-v2 validation failures preserve raw schema details when no field message can be rendered.
+- **plugins-runtime**: Text and text-range `letterSpacing` setters now accept negative numeric tracking values, matching Penpot's native text model.
+- **plugins-runtime**: Token application methods now normalize sandboxed JavaScript property arrays before validating their internal set representation.
+- **plugins-runtime**: The public `fontFamilies` token property now maps to Penpot's singular internal `font-family` binding, and camel-case property names are normalized consistently.
+- **sayhi-component-importer**: Verify imports now opt into canonical child ordering so background faces remain behind editable content layers.
 - **plugins-runtime**: The validation error raised when setting a `fontWeight` the current font has no variant for now lists the weights the font supports.
 - **plugins-runtime**: Fix inverted validation that rejected valid values (and accepted invalid ones) on text range `align`, `direction`, `textDecoration`, `letterSpacing` and on layout child `zIndex`.
 - **plugins-runtime**: Array-typed properties (e.g. `page.flows`, `shape.exports`, `shape.shadows`, layout `rows`/`columns`, ruler guides, path `commands`) now always return an array, returning an empty array instead of `null` when there are no items

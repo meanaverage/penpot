@@ -188,7 +188,9 @@
    :enable-backend-worker
    :enable-secure-session-cookies
    :enable-email-verification
-   :enable-onboarding
+   ;; SayHi Verify owns account setup. Penpot's product questionnaire must not
+   ;; interrupt an authenticated SayHi session.
+   :disable-onboarding
    :enable-dashboard-templates-section
    :enable-google-fonts-provider
    :enable-component-thumbnails

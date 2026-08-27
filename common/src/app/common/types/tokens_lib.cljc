@@ -1683,6 +1683,8 @@ Will return a value that matches this schema:
    - Otherwise keep as is"
   [value]
   (cond
+    (and (string? value)
+         (re-matches cto/token-ref-validation-regex value)) value
     (string? value) (cto/split-font-family value)
     (sequential? value) value
     :else value))

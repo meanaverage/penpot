@@ -58,9 +58,9 @@ describe('Text', () => {
   test('lineHeight and letterSpacing round-trip', (ctx) => {
     const t = text(ctx);
     t.lineHeight = '1.5';
-    t.letterSpacing = '2';
+    t.letterSpacing = '-1.8';
     expect(t.lineHeight).toBe('1.5');
-    expect(t.letterSpacing).toBe('2');
+    expect(t.letterSpacing).toBe('-1.8');
   });
 
   test('alignment round-trips', (ctx) => {
@@ -149,9 +149,9 @@ describe('Text', () => {
       const t = text(ctx, 'Hello Penpot');
       const range = t.getRange(0, 5);
       range.lineHeight = '2';
-      range.letterSpacing = '1';
+      range.letterSpacing = '-1.8';
       expect(range.lineHeight).toBe('2');
-      expect(range.letterSpacing).toBe('1');
+      expect(range.letterSpacing).toBe('-1.8');
     });
 
     test('range alignment round-trips', (ctx) => {

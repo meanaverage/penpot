@@ -13,6 +13,7 @@
    [app.main.data.modal :as modal]
    [app.main.data.preview :as dp]
    [app.main.data.profile :as du]
+   [app.main.data.sayhi.motion-studio :as sayhi.motion-studio]
    [app.main.data.shortcuts :as ds]
    [app.main.data.workspace :as dw]
    [app.main.data.workspace.colors :as mdc]
@@ -613,6 +614,11 @@
 
 
    ;; PLUGINS
+   :toggle-motion-studio {:tooltip (ds/meta (ds/alt "M"))
+                          :command (ds/c-mod "alt+m")
+                          :subsections [:panels]
+                          :fn #(st/emit! (sayhi.motion-studio/toggle))}
+
    :plugins               {:tooltip (ds/meta (ds/alt "P"))
                            :command (ds/c-mod "alt+p")
                            :subsections [:basics]

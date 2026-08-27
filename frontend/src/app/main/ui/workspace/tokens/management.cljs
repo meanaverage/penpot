@@ -293,8 +293,10 @@
                  (or (nil? selected-token-set-id)
                      (and selected-token-set-id
                           (not (ctob/get-set tokens-lib selected-token-set-id)))))
-        (let [match (->> (ctob/get-sets tokens-lib)
-                         (first))]
+        (let [sets  (ctob/get-sets tokens-lib)
+              match (or (some #(when (str/includes? (ctob/get-name %) "/Component/") %)
+                              sets)
+                        (first sets))]
           (when match
             (st/emit! (dwtl/set-selected-token-set-id (ctob/get-id match)))))))
 

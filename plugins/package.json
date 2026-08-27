@@ -13,6 +13,8 @@
     "start:plugin:icons": "pnpm --filter icons-plugin run init",
     "start:plugin:loremipsum": "pnpm --filter lorem-ipsum-plugin run init",
     "start:plugin:palette": "pnpm --filter create-palette-plugin run init",
+    "start:plugin:sayhi-importer": "pnpm --filter sayhi-component-importer-plugin run dev",
+    "start:plugin:sayhi-importer-v2": "pnpm --filter sayhi-component-importer-v2-plugin run dev",
     "start:plugin:table": "pnpm --filter table-plugin run init",
     "start:plugin:renamelayers": "pnpm --filter rename-layers-plugin run init",
     "start:plugin:colors-to-tokens": "pnpm --filter colors-to-tokens-plugin run init",

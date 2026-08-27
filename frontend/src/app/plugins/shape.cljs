@@ -63,7 +63,7 @@
    [app.plugins.strokes :as strokes]
    [app.plugins.system-events :as se]
    [app.plugins.text :as text]
-   [app.plugins.tokens :refer [applied-tokens-plugin->applied-tokens token-attr-plugin->token-attr token-attr?]]
+   [app.plugins.tokens :refer [applied-tokens-plugin->applied-tokens decode-token-application-args token-attr-plugin->token-attr token-attr?]]
    [app.plugins.utils :as u]
    [app.util.http :as http]
    [app.util.object :as obj]
@@ -1679,6 +1679,7 @@
             :schema [:tuple
                      [:fn token-proxy?]
                      [:maybe [::sm/set [:and ::sm/keyword [:fn token-attr?]]]]]
+            :decode/fn #(decode-token-application-args % 1)
             :fn (fn [token attrs]
                   (let [token (u/locate-token file-id (obj/get token "$set-id") (obj/get token "$id"))
                         kw-attrs (into #{} (map token-attr-plugin->token-attr attrs))]

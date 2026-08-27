@@ -44,8 +44,82 @@ update_oidc_name() {
   fi
 }
 
+update_sayhi_studio_uri() {
+  if [ -n "$PENPOT_SAYHI_STUDIO_URI" ]; then
+    if [[ "$PENPOT_SAYHI_STUDIO_URI" != http://* && "$PENPOT_SAYHI_STUDIO_URI" != https://* ]]; then
+      echo "PENPOT_SAYHI_STUDIO_URI must be an HTTP(S) URL" >&2
+      exit 1
+    fi
+
+    if [[ "$PENPOT_SAYHI_STUDIO_URI" == *$'\n'* || "$PENPOT_SAYHI_STUDIO_URI" == *$'\r'* ]]; then
+      echo "PENPOT_SAYHI_STUDIO_URI must not contain line breaks" >&2
+      exit 1
+    fi
+
+    local escaped_uri="${PENPOT_SAYHI_STUDIO_URI//\\/\\\\}"
+    escaped_uri="${escaped_uri//\"/\\\"}"
+    printf 'var penpotSayHiStudioURI = "%s";\n' "$escaped_uri" >> "$1"
+  fi
+}
+
+update_sayhi_motion_studio_mode() {
+  if [ -n "$PENPOT_SAYHI_MOTION_STUDIO_MODE" ]; then
+    if [[ "$PENPOT_SAYHI_MOTION_STUDIO_MODE" != "legacy" && "$PENPOT_SAYHI_MOTION_STUDIO_MODE" != "native-v1" && "$PENPOT_SAYHI_MOTION_STUDIO_MODE" != "native-v2" ]]; then
+      echo "PENPOT_SAYHI_MOTION_STUDIO_MODE must be legacy, native-v1, or native-v2" >&2
+      exit 1
+    fi
+
+    printf 'var penpotSayHiMotionStudioMode = "%s";\n' "$PENPOT_SAYHI_MOTION_STUDIO_MODE" >> "$1"
+  fi
+}
+
+update_sayhi_motion_studio_uri() {
+  if [ -n "$PENPOT_SAYHI_MOTION_STUDIO_URI" ]; then
+    if [[ "$PENPOT_SAYHI_MOTION_STUDIO_URI" != http://* && "$PENPOT_SAYHI_MOTION_STUDIO_URI" != https://* ]]; then
+      echo "PENPOT_SAYHI_MOTION_STUDIO_URI must be an HTTP(S) URL" >&2
+      exit 1
+    fi
+
+    if [[ "$PENPOT_SAYHI_MOTION_STUDIO_URI" == *$'\n'* || "$PENPOT_SAYHI_MOTION_STUDIO_URI" == *$'\r'* ]]; then
+      echo "PENPOT_SAYHI_MOTION_STUDIO_URI must not contain line breaks" >&2
+      exit 1
+    fi
+
+    local escaped_uri="${PENPOT_SAYHI_MOTION_STUDIO_URI//\\/\\\\}"
+    escaped_uri="${escaped_uri//\"/\\\"}"
+    printf 'var penpotSayHiMotionStudioURI = "%s";\n' "$escaped_uri" >> "$1"
+  fi
+}
+
+update_sayhi_motion_preview_surface() {
+  if [ -n "$PENPOT_SAYHI_MOTION_PREVIEW_SURFACE" ]; then
+    if [[ "$PENPOT_SAYHI_MOTION_PREVIEW_SURFACE" != "canvas" && "$PENPOT_SAYHI_MOTION_PREVIEW_SURFACE" != "focused" ]]; then
+      echo "PENPOT_SAYHI_MOTION_PREVIEW_SURFACE must be canvas or focused" >&2
+      exit 1
+    fi
+
+    printf 'var penpotSayHiMotionPreviewSurface = "%s";\n' "$PENPOT_SAYHI_MOTION_PREVIEW_SURFACE" >> "$1"
+  fi
+}
+
+update_sayhi_web_materializer_mode() {
+  if [ -n "$PENPOT_SAYHI_WEB_MATERIALIZER_MODE" ]; then
+    if [[ "$PENPOT_SAYHI_WEB_MATERIALIZER_MODE" != "projection-v1" && "$PENPOT_SAYHI_WEB_MATERIALIZER_MODE" != "portable-v2" && "$PENPOT_SAYHI_WEB_MATERIALIZER_MODE" != "shadow" ]]; then
+      echo "PENPOT_SAYHI_WEB_MATERIALIZER_MODE must be projection-v1, portable-v2, or shadow" >&2
+      exit 1
+    fi
+
+    printf 'var penpotSayHiWebMaterializerMode = "%s";\n' "$PENPOT_SAYHI_WEB_MATERIALIZER_MODE" >> "$1"
+  fi
+}
+
 update_flags /var/www/app/js/config.js
 update_oidc_name /var/www/app/js/config.js
+update_sayhi_studio_uri /var/www/app/js/config.js
+update_sayhi_motion_studio_mode /var/www/app/js/config.js
+update_sayhi_motion_studio_uri /var/www/app/js/config.js
+update_sayhi_motion_preview_surface /var/www/app/js/config.js
+update_sayhi_web_materializer_mode /var/www/app/js/config.js
 
 #########################################
 ## Nginx Config

@@ -1,0 +1,13 @@
+{
+  "name": "sayhi-component-importer-v2-plugin",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build --emptyOutDir",
+    "serve:built": "node ../sayhi-component-importer-plugin/preview-server.mjs --root ../../dist/apps/sayhi-component-importer-v2-plugin --host 127.0.0.1 --port 4193",
+    "lint": "eslint .",
+    "test": "vitest run"
+  }
+}

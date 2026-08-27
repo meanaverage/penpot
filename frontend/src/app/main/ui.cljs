@@ -11,6 +11,8 @@
    [app.config :as cf]
    [app.main.data.common :as dcm]
    [app.main.data.nitrate :as dnt]
+   [app.main.data.sayhi.web-materializer.contract :as sayhi.web-materializer.contract]
+   [app.main.data.sayhi.web-preview :as sayhi.web-preview]
    [app.main.data.team :as dtm]
    [app.main.errors :as errors]
    [app.main.refs :as refs]
@@ -29,6 +31,7 @@
    [app.main.ui.onboarding.questions :refer [questions-modal]]
    [app.main.ui.onboarding.team-choice :refer [onboarding-team-modal*]]
    [app.main.ui.releases :refer [release-notes-modal]]
+   [app.main.ui.sayhi.web-preview :refer [web-preview-page*]]
    [app.main.ui.static :as static]
    [app.util.dom :as dom]
    [app.util.i18n :refer [tr]]
@@ -311,6 +314,30 @@
             :share-id share-id
             :interactions-mode imode
             :share share}]])
+
+       :sayhi-web-preview
+       (let [params    (get params :query)
+             component (rt/get-query-param params :component)
+             story     (rt/get-query-param params :story)
+             render-state (rt/get-query-param params :render-state)
+             mode      (sayhi.web-materializer.contract/normalize-mode
+                        (rt/get-query-param params :materializer))
+             artifact-key (rt/get-query-param params :artifact-key)
+             artifact  (sayhi.web-materializer.contract/read-cached-artifact artifact-key)
+             portable? (and (= mode sayhi.web-materializer.contract/portable-provider)
+                            (sayhi.web-materializer.contract/portable-artifact? artifact))
+             href      (sayhi.web-preview/preview-href
+                        cf/sayhi-studio-uri
+                        {:component-id component
+                         :story-id story
+                         :render-state render-state})]
+         [:> web-preview-page*
+          {:component-id component
+           :provider (if portable?
+                       sayhi.web-materializer.contract/portable-provider
+                       sayhi.web-materializer.contract/projection-provider)
+           :artifact artifact
+           :href href}])
 
 
        :workspace-legacy

@@ -1,0 +1,13 @@
+{
+  "name": "SayHi component importer vNext",
+  "description": "DTCG-first, Penpot-native SayHi component importer",
+  "code": "plugin.js?revision=20260826.12",
+  "version": 2,
+  "permissions": [
+    "content:read",
+    "content:write",
+    "library:read",
+    "library:write",
+    "allow:downloads"
+  ]
+}

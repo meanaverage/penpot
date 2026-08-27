@@ -45,6 +45,8 @@
 
    ["/frame-preview" :frame-preview]
 
+   ["/run" :sayhi-web-preview]
+
    ["/view" :viewer]
 
    ["/view/:file-id" :viewer-legacy]

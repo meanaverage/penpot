@@ -22,6 +22,7 @@
    [app.main.ui.hooks :as hooks]
    [app.main.ui.hooks.resize :refer [use-resize-observer]]
    [app.main.ui.modal :refer [modal-container*]]
+   [app.main.ui.sayhi.motion-studio :as sayhi.motion-studio]
    [app.main.ui.workspace.colorpicker]
    [app.main.ui.workspace.context-menu :refer [context-menu*]]
    [app.main.ui.workspace.coordinates :as coordinates]
@@ -273,6 +274,7 @@
               :file file
               :wglobal wglobal
               :layout layout}])
+          [:> sayhi.motion-studio/motion-studio-dock*]
           (when (or (not (and file-loaded? page-id))
                     ;; in wasm renderer, extend the pixel loader until the first frame is rendered
                     ;; but do not apply it when switching pages
@@ -291,4 +293,3 @@
 
     (when (uuid? file-id)
       [:> workspace* props])))
-

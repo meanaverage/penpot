@@ -17,6 +17,7 @@
    [app.common.types.shape :as cts]
    [app.common.types.shape-tree :as ctt]
    [app.common.types.shape.layout :as ctl]
+   [app.main.data.sayhi.motion-studio :as motion-studio]
    [app.main.data.workspace.modifiers :as dwm]
    [app.main.data.workspace.variants :as dwv]
    [app.main.features :as features]
@@ -341,6 +342,12 @@
           [:> grid-edition-bar* {:shape editing-shape}])])
 
      [:div {:class (stl/css :viewport-overlays)}
+      [:div
+       {:id motion-studio/canvas-preview-root-id
+        :style {:position "absolute"
+                :inset 0
+                :overflow "hidden"
+                :pointer-events "none"}}]
       ;; The behaviour inside a foreign object is a bit different that in plain HTML so we wrap
       ;; inside a foreign object "dummy" so this awkward behaviour is take into account
       [:svg {:style {:top 0 :left 0 :position "fixed" :width "100%" :height "100%" :opacity (when-not (dbg/enabled? :html-text) 0)}}

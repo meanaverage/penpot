@@ -12,15 +12,19 @@
    [app.common.schema :as sm]
    [app.common.time :as ct]
    [app.common.types.team :as ctt]
+   [app.config :as cf]
    [app.main.data.helpers :as dsh]
    [app.main.data.modal :as modal]
    [app.main.data.notifications :as ntf]
    [app.main.data.persistence :as-alias dps]
+   [app.main.data.sayhi.web-materializer :as sayhi.web-materializer]
+   [app.main.data.sayhi.web-preview :as sayhi.web-preview]
    [app.main.repo :as rp]
    [app.main.router :as rt]
    [app.main.store :as st]
    [app.util.dom :as-alias dom]
    [app.util.i18n :refer [tr]]
+   [app.util.json :as json]
    [beicon.v2.core :as rx]
    [potok.v2.core :as ptk]))
 
@@ -472,18 +476,51 @@
                                 (reduced (:id obj)))))
                           nil
                           selected))
-            params  {:file-id file-id
-                     :page-id page-id
-                     :section section
-                     :frame-id frame-id
-                     :index index}
+            web-object
+            (when (some? cf/sayhi-studio-uri)
+              (sayhi.web-preview/resolve-viewer-web-object
+               objects selected frame-id))
+
+            materialization
+            (when web-object
+              (sayhi.web-materializer/materialize
+               {:mode cf/sayhi-web-materializer-mode
+                :studio-uri cf/sayhi-studio-uri
+                :objects objects
+                :web-object web-object}))
+
+            artifact-key
+            (when materialization
+              (sayhi.web-materializer/cache-artifact! web-object materialization))
+
+            render-state
+            (some-> (get-in materialization [:projection :renderState])
+                    (json/encode))
+
+            web-preview?
+            (sayhi.web-materializer/previewable? materialization)
+
+            params  (if web-preview?
+                      {:component (:component-id web-object)
+                       :story (:story-id web-object)
+                       :render-state render-state
+                       :materializer (:mode materialization)
+                       :artifact-key artifact-key}
+                      {:file-id file-id
+                       :page-id page-id
+                       :section section
+                       :frame-id frame-id
+                       :index index})
             params  (d/without-nils params)
-            name    (dm/str "viewer-" file-id)
+            route   (if web-preview? :sayhi-web-preview :viewer)
+            name    (if web-preview?
+                      (dm/str "run-" (:component-id web-object))
+                      (dm/str "viewer-" file-id))
             options (merge {::rt/new-window true
                             ::rt/window-name name}
                            options)]
         (rx/of ::dps/force-persist
-               (rt/nav :viewer params options))))))
+               (rt/nav route params options))))))
 
 (defn go-to-dashboard-deleted
   [& {:keys [team-id] :as options}]

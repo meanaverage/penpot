@@ -30,7 +30,7 @@ export function prepareUrl(
 }
 
 export function loadManifest(url: string): Promise<Manifest> {
-  return fetch(url)
+  return fetch(url, { cache: 'no-store' })
     .then((response) => response.json())
     .then((manifest: Manifest): Manifest => {
       const parseResult = manifestSchema.safeParse(manifest);
@@ -52,7 +52,9 @@ export function loadManifestCode(manifest: Manifest): Promise<string> {
     return Promise.resolve(manifest.code);
   }
 
-  return fetch(getValidUrl(manifest.host, manifest.code)).then((response) => {
+  return fetch(getValidUrl(manifest.host, manifest.code), {
+    cache: 'no-store',
+  }).then((response) => {
     if (response.ok) {
       return response.text();
     }

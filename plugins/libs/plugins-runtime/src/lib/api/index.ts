@@ -31,7 +31,7 @@ import type {
 
 import { Permissions } from '../models/manifest.model.js';
 import { OpenUIOptions } from '../models/open-ui-options.model.js';
-import { z } from 'zod';
+import { z } from 'zod/v3';
 import { createPluginManager } from '../plugin-manager.js';
 
 export const validEvents = [

@@ -32,7 +32,8 @@ const frontendDir = resolve(repoRoot, 'frontend');
 const e2eDataDir = resolve(frontendDir, 'playwright/data');
 
 const MOCKED = !!process.env['MOCK_BACKEND'];
-const MOCK_BASE_URL = 'http://localhost:3000';
+const EXTERNAL_MOCK_BASE_URL = process.env['PENPOT_MOCK_BASE_URL'];
+const MOCK_BASE_URL = EXTERNAL_MOCK_BASE_URL ?? 'http://localhost:3000';
 const apiUrl = MOCKED
   ? MOCK_BASE_URL
   : (process.env['PENPOT_BASE_URL'] ?? 'https://localhost:3449');
@@ -212,6 +213,7 @@ async function openNotificationsWebSocket(page: Page): Promise<void> {
     wsUrl = [...created].find((u) => u.includes('ws/notifications'));
     if (wsUrl) break;
     if (Date.now() - start > 30000) {
+      if (process.env['ALLOW_MISSING_NOTIFICATIONS_WS'] === '1') return;
       throw new Error('Timed out waiting for notifications WebSocket');
     }
     await new Promise((r) => setTimeout(r, 50));
@@ -341,7 +343,7 @@ async function main() {
   let authToken: string | undefined;
 
   if (MOCKED) {
-    server = startE2eServer();
+    if (!EXTERNAL_MOCK_BASE_URL) server = startE2eServer();
     await waitForServer(MOCK_BASE_URL);
     fileUrl = mockedFileUrl();
   } else {

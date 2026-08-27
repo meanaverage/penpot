@@ -137,7 +137,7 @@
 
                 (not= new-manifest manifest)
                 (do (preg/install-plugin! new-manifest)
-                    (load-plugin! manifest))
+                    (load-plugin! new-manifest))
                 :else
                 (load-plugin! manifest))))
           (fn []

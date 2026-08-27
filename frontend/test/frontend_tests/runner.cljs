@@ -10,6 +10,9 @@
    [frontend-tests.data.exports-assets-test]
    [frontend-tests.data.nitrate-test]
    [frontend-tests.data.repo-test]
+   [frontend-tests.data.sayhi-motion-studio-test]
+   [frontend-tests.data.sayhi-web-materializer-test]
+   [frontend-tests.data.sayhi-web-preview-test]
    [frontend-tests.data.store-test]
    [frontend-tests.data.uploads-test]
    [frontend-tests.data.viewer-test]
@@ -60,6 +63,7 @@
    [frontend-tests.ui.comments-position-modifier-test]
    [frontend-tests.ui.ds-controls-numeric-input-test]
    [frontend-tests.ui.measures-menu-props-test]
+   [frontend-tests.ui.presence-model-test]
    [frontend-tests.util-object-test]
    [frontend-tests.util-range-tree-test]
    [frontend-tests.util-simple-math-test]
@@ -88,6 +92,9 @@
    'frontend-tests.copy-as-svg-test
    'frontend-tests.data.nitrate-test
    'frontend-tests.data.repo-test
+   'frontend-tests.data.sayhi-web-preview-test
+   'frontend-tests.data.sayhi-motion-studio-test
+   'frontend-tests.data.sayhi-web-materializer-test
    'frontend-tests.data.store-test
    'frontend-tests.data.exports-assets-test
    'frontend-tests.errors-test
@@ -139,6 +146,7 @@
    'frontend-tests.ui.comments-position-modifier-test
    'frontend-tests.ui.ds-controls-numeric-input-test
    'frontend-tests.ui.measures-menu-props-test
+   'frontend-tests.ui.presence-model-test
    'frontend-tests.render-wasm.process-objects-test
    'frontend-tests.text-editor-paste-guard-test
    'frontend-tests.util-object-test

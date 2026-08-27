@@ -1,5 +1,10 @@
 FROM nginxinc/nginx-unprivileged:1.31.1-alpine
-LABEL maintainer="Penpot <docker@penpot.app>"
+
+ARG PENPOT_BUNDLE_VERSION="develop"
+ARG PENPOT_BUNDLE_VERSION_TAG="unverified"
+LABEL maintainer="Penpot <docker@penpot.app>" \
+      bundle_version="${PENPOT_BUNDLE_VERSION}" \
+      io.sayhi.penpot.frontend.version-tag="${PENPOT_BUNDLE_VERSION_TAG}"
 
 USER root
 
@@ -20,6 +25,15 @@ RUN set -ex; \
 
 ARG BUNDLE_PATH="./bundle-frontend/"
 COPY $BUNDLE_PATH /var/www/app/
+
+# Refuse to package a stale frontend under a fresh image label. The browser
+# cache identity must match both generated HTML and the compiled application.
+RUN set -eu; \
+    test -n "${PENPOT_BUNDLE_VERSION_TAG}"; \
+    test "${PENPOT_BUNDLE_VERSION_TAG}" != "develop"; \
+    grep -Fq "globalThis.penpotVersionTag = \"${PENPOT_BUNDLE_VERSION_TAG}\";" /var/www/app/index.html; \
+    grep -Fq "${PENPOT_BUNDLE_VERSION_TAG}" /var/www/app/js/main.js
+
 COPY ./files/config.js /var/www/app/js/config.js
 COPY ./files/nginx.conf.template /tmp/nginx.conf.template
 COPY ./files/nginx-resolvers.conf.template /tmp/resolvers.conf.template

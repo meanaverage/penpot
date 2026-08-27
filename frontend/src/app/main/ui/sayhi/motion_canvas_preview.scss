@@ -1,0 +1,17 @@
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+.motion-canvas-preview {
+  position: absolute;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.motion-canvas-preview-frame {
+  display: block;
+  border: 0;
+  background: transparent;
+  pointer-events: none;
+  transform-origin: 0 0;
+}

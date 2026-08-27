@@ -8,6 +8,12 @@
   wait for the user to push. Do not change the remote URL, do not switch SSH↔HTTPS.
 - **Never amend a commit that has been pushed** unless the user explicitly asks.
   If the user pushes, treat that commit as final from the agent's side.
+- **Never package or serve a SayHi Penpot frontend from a split or resumed
+  production build.** Run `frontend/scripts/build` in one process so its unique
+  `VERSION_TAG` reaches both the compiled JavaScript and generated HTML. The
+  build's version-tag verifier must pass before an image is created or a live
+  frontend is replaced. Reusing the static `develop` tag can mix cached assets
+  from different images and produce an Internal Error.
 - **Read the workflow memory BEFORE the corresponding action**:
   - Before `git commit` → `mem:workflow/creating-commits` (commit format, AI-assisted-by trailer)
   - Before `gh issue create` → `mem:workflow/creating-issues` (title derivation, body template, Issue Type)
@@ -110,4 +116,3 @@ precision while maintaining a strong focus on maintainability and performance.
 - `scripts/check-commit` — Validate commit messages against Penpot's commit guidelines.
 - `scripts/check-fmt-clj` — Check Clojure formatting without modifying files.
 - `scripts/ci` — CI orchestration script for running lint, tests, and format checks across modules. See `scripts/ci --help`.
-

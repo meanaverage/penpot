@@ -1871,6 +1871,10 @@
            (t/is (= (:value token) ["Georgia"]))
            (t/is (= (:description token) ""))))
 
+       (t/testing "whole-token font family references remain references"
+         (t/is (= "{font.family.base}"
+                  (ctob/convert-dtcg-font-family "{font.family.base}"))))
+
        (t/testing "complex font names with spaces handled correctly"
          (let [token (ctob/get-token-by-name lib "font-family-test" "fonts.font-with-spaces")]
            (t/is (some? token))

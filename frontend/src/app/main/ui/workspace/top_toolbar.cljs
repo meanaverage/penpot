@@ -23,6 +23,7 @@
    [app.main.ui.components.file-uploader :refer [file-uploader]]
    [app.main.ui.context :as ctx]
    [app.main.ui.icons :as deprecated-icon]
+   [app.main.ui.sayhi.motion-studio :as sayhi.motion-studio]
    [app.util.dom :as dom]
    [app.util.i18n :as i18n :refer [tr]]
    [app.util.timers :as ts]
@@ -274,6 +275,8 @@
               :data-tool "plugins"
               :data-testid "plugins-btn"}
              deprecated-icon/puzzle]])
+
+         [:> sayhi.motion-studio/motion-studio-button*]
 
          (when *assert*
            [:li

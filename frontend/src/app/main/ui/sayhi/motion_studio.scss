@@ -1,0 +1,179 @@
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+@use "../ds/typography.scss" as t;
+@use "../ds/_borders.scss" as *;
+
+.motion-studio-toolbar-button {
+  inline-size: 2.25rem;
+  block-size: 2.25rem;
+  display: grid;
+  place-items: center;
+  margin-inline: 0.125rem;
+  border: 0;
+  border-radius: 0.5rem;
+  background: transparent;
+  color: var(--color-foreground-secondary);
+  cursor: pointer;
+
+  svg {
+    inline-size: 1rem;
+    block-size: 1rem;
+    stroke: currentcolor;
+  }
+
+  &:hover:not(:disabled),
+  &.selected {
+    background: var(--button-tertiary-background-color-hover);
+    color: var(--color-accent-primary);
+  }
+
+  &:focus-visible {
+    outline: $b-2 solid var(--color-accent-primary);
+    outline-offset: $b-1;
+  }
+
+  &:disabled {
+    opacity: 0.42;
+    cursor: default;
+  }
+}
+
+.motion-studio-dock {
+  position: fixed;
+  inset-inline: max(1rem, 12vw);
+  inset-block-end: 1rem;
+  z-index: var(--z-index-panels);
+  min-inline-size: 34rem;
+  block-size: min(22rem, 42vh);
+  display: grid;
+  grid-template-rows: 2.75rem 1fr;
+  overflow: hidden;
+  border: $b-1 solid var(--panel-border-color);
+  border-radius: 0.75rem;
+  background: var(--color-background-primary);
+  box-shadow: 0 0.75rem 2.5rem rgb(0 0 0 / 0.22);
+
+  &.collapsed {
+    inset-inline: auto 1rem;
+    inline-size: min(28rem, calc(100vw - 2rem));
+    min-inline-size: 0;
+    block-size: 2.75rem;
+  }
+}
+
+.motion-studio-dock-header {
+  min-inline-size: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-m);
+  padding-inline: var(--sp-m) var(--sp-xs);
+  border-block-end: $b-1 solid var(--panel-border-color);
+  background: var(--color-background-primary);
+}
+
+.motion-studio-dock-title {
+  min-inline-size: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-s);
+
+  svg {
+    inline-size: 1rem;
+    block-size: 1rem;
+    flex: none;
+    stroke: var(--color-accent-primary);
+  }
+
+  strong {
+    @include t.use-typography("body-medium");
+
+    flex: none;
+  }
+
+  span {
+    @include t.use-typography("body-small");
+
+    overflow: hidden;
+    color: var(--color-foreground-secondary);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.motion-studio-dock-actions {
+  display: flex;
+  align-items: center;
+
+  button {
+    inline-size: 2rem;
+    block-size: 2rem;
+    display: grid;
+    place-items: center;
+    border: 0;
+    border-radius: 0.4rem;
+    background: transparent;
+    color: var(--color-foreground-secondary);
+    cursor: pointer;
+
+    &:hover {
+      background: var(--button-tertiary-background-color-hover);
+    }
+
+    &:focus-visible {
+      outline: $b-2 solid var(--color-accent-primary);
+    }
+
+    svg {
+      inline-size: 0.9rem;
+      block-size: 0.9rem;
+      stroke: currentcolor;
+    }
+  }
+}
+
+.motion-studio-dock-frame {
+  inline-size: 100%;
+  block-size: 100%;
+  border: 0;
+  background: var(--color-background-primary);
+}
+
+.motion-studio-preview {
+  position: fixed;
+  inset-block: 4.5rem calc(min(22rem, 42vh) + 2rem);
+  inset-inline: max(18rem, 22vw) max(3rem, 22vw);
+  z-index: calc(var(--z-index-panels) - 1);
+  min-block-size: 14rem;
+  overflow: hidden;
+  border-radius: 0.9rem;
+  background: transparent;
+  filter: drop-shadow(0 1rem 2.5rem rgb(0 0 0 / 0.14));
+
+  &.collapsed {
+    display: none;
+  }
+}
+
+.motion-studio-preview-frame {
+  inline-size: 100%;
+  block-size: 100%;
+  border: 0;
+  background: transparent;
+}
+
+@media (width <= 48rem) {
+  .motion-studio-dock {
+    inset-inline: 0.5rem;
+    inset-block-end: 0.5rem;
+    min-inline-size: 0;
+    block-size: min(25rem, 56vh);
+  }
+
+  .motion-studio-preview {
+    inset-block: 4rem calc(min(25rem, 56vh) + 1.5rem);
+    inset-inline: 1rem;
+  }
+}

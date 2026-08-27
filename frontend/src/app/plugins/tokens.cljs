@@ -27,7 +27,9 @@
 
 ;; Give more semantic names to the shape attributes that tokens can be applied to
 (def ^:private map:token-attr->token-attr-plugin
-  {:r1 :border-radius-top-left
+  {:font-family :font-families
+
+   :r1 :border-radius-top-left
    :r2 :border-radius-top-right
    :r3 :border-radius-bottom-right
    :r4 :border-radius-bottom-left
@@ -70,7 +72,7 @@
   Inputs that are already in canonical form (`:r1`, `:fill`, `\"fill\"`,
   …) pass through unchanged."
   [k]
-  (let [k (cond-> k (string? k) keyword)]
+  (let [k (cond-> k (string? k) json/read-kebab-key)]
     (get map:token-attr-plugin->token-attr k k)))
 
 (defn applied-tokens-plugin->applied-tokens
@@ -82,6 +84,44 @@
 (defn token-attr?
   [attr]
   (cto/token-attr? (token-attr-plugin->token-attr attr)))
+
+(defn- finite-array-like?
+  [value]
+  (let [length (obj/get value "length")]
+    (and (number? length)
+         (js/Number.isSafeInteger length)
+         (<= 0 length))))
+
+(defn normalize-token-attrs
+  "Normalize the public JavaScript list accepted by token application APIs.
+
+  Plugin values can originate in a sandboxed iframe. Those arrays are valid
+  JavaScript arrays, but are not always recognized as host-realm arrays by the
+  generic JSON decoder. Treat any finite array-like value as the documented
+  list of token properties and materialize the internal set explicitly."
+  [attrs]
+  (cond
+    (nil? attrs)
+    nil
+
+    (set? attrs)
+    attrs
+
+    (coll? attrs)
+    (into #{} attrs)
+
+    (and (some? attrs) (finite-array-like? attrs))
+    (into #{} (array-seq (.from js/Array attrs)))
+
+    :else
+    attrs))
+
+(defn decode-token-application-args
+  "Decode a plugin method's arguments without recursively inspecting proxy
+  objects, then normalize the token-property argument at `attrs-index`."
+  [args attrs-index]
+  (let [args (json/->clj args :recursive false)]
+    (update args attrs-index normalize-token-attrs)))
 
 (defn- apply-token-to-shapes
   [plugin-id file-id set-id id shape-ids attrs]
@@ -109,6 +149,46 @@
               "lineHeight"     (:line-height m)
               "textCase"       (:text-case m)
               "textDecoration" (:text-decoration m)}]))
+
+(defn- typography-token-value->js
+  "Projects Penpot's internal typography map through the documented writable
+  TokenTypographyValueString boundary. This must be symmetrical with
+  `normalize-token-value`: returning internal kebab-case keys makes a plugin's
+  read/compare/write cycle drop font family and font size on the next write."
+  [value]
+  (if (map? value)
+    #js {"fontFamilies"   (clj->js (:font-family value))
+         "fontSizes"      (:font-size value)
+         "fontWeight"     (:font-weight value)
+         "letterSpacing"  (:letter-spacing value)
+         "lineHeight"     (:line-height value)
+         "textCase"       (:text-case value)
+         "textDecoration" (:text-decoration value)}
+    (json/->js value)))
+
+(defn- shadow-token-value->js
+  "Projects stored shadow members to the public camelCase writable shape."
+  [value]
+  (if (sequential? value)
+    (into-array
+     (map (fn [entry]
+            (if (map? entry)
+              #js {"color"   (:color entry)
+                   "inset"   (str (:inset entry))
+                   "offsetX" (:offset-x entry)
+                   "offsetY" (:offset-y entry)
+                   "spread"  (:spread entry)
+                   "blur"    (:blur entry)}
+              (json/->js entry)))
+          value))
+    (json/->js value)))
+
+(defn- token-value->js
+  [token]
+  (case (:type token)
+    :typography (typography-token-value->js (:value token))
+    :shadow     (shadow-token-value->js (:value token))
+    (json/->js (:value token))))
 
 (defn- shadow-key->camel
   "Renames a shadow composite field name (kebab string) to its public camelCase
@@ -174,6 +254,23 @@
       :else
       (ts/tokenscript-symbols->penpot-unit resolved-value))))
 
+(defn normalize-token-value
+  "Decode a public Plugin API token value into Penpot's internal token shape.
+
+  Token creation already passes through `convert-dtcg-token`; token updates
+  must apply the same boundary conversion. Without it, documented public
+  values such as numeric variable font weights and string-valued shadow
+  fields reach the internal schema unchanged and fail only when an importer
+  updates an existing token."
+  [token-type value]
+  (let [value (json/->clj value)]
+    (case token-type
+      :font-family (ctob/convert-dtcg-font-family value)
+      :font-weight (cond-> value (number? value) str)
+      :typography  (ctob/convert-dtcg-typography-composite value)
+      :shadow      (ctob/convert-dtcg-shadow-composite value)
+      (cond-> value (number? value) str))))
+
 (defn token-proxy? [p]
   (obj/type-of? p "TokenProxy"))
 
@@ -219,22 +316,16 @@
      :get
      (fn [_]
        (let [token (u/locate-token file-id set-id id)]
-         (json/->js (:value token))))
-     :schema (let [token (u/locate-token file-id set-id id)
-                   base  (cfo/make-token-value-schema (:type token))]
-               ;; plugin-types declares the fontFamilies value as
-               ;; `string | string[]`, but the core schema only accepts a
-               ;; vector/ref; also accept a plain string (normalized in :set).
-               (if (= :font-family (:type token))
-                 [:or :string base]
-                 base))
+         (token-value->js token)))
+     :schema (let [token (u/locate-token file-id set-id id)]
+               (cfo/make-token-value-schema (:type token)))
+     :decode/fn
+     (fn [value]
+       (let [token (u/locate-token file-id set-id id)]
+         (normalize-token-value (:type token) value)))
      :set
      (fn [_ value]
-       (let [token (u/locate-token file-id set-id id)
-             value (cond-> value
-                     (= :font-family (:type token))
-                     (ctob/convert-dtcg-font-family))]
-         (st/emit! (dwtl/update-token set-id id {:value value}))))}
+       (st/emit! (dwtl/update-token set-id id {:value value})))}
 
     :resolvedValue
     {:this true
@@ -266,7 +357,7 @@
      :set
      (fn [_ value]
        (st/emit! (-> (dwtl/update-token set-id id {:description value})
-                     (se/add-event :plugin-id))))}
+                     (se/add-event plugin-id))))}
 
     :duplicate
     (fn []
@@ -293,12 +384,14 @@
      :schema [:tuple
               [:vector [:fn shape-proxy?]]
               [:maybe [::sm/set [:and ::sm/keyword [:fn token-attr?]]]]]
+     :decode/fn #(decode-token-application-args % 1)
      :fn (fn [shapes attrs]
            (apply-token-to-shapes plugin-id file-id set-id id (map #(obj/get % "$id") shapes) attrs))}
 
     :applyToSelected
     {:enumerable false
      :schema [:tuple [:maybe [::sm/set [:and ::sm/keyword [:fn token-attr?]]]]]
+     :decode/fn #(decode-token-application-args % 0)
      :fn (fn [attrs]
            (let [selected (get-in @st/state [:workspace-local :selected])]
              (apply-token-to-shapes plugin-id file-id set-id id selected attrs)))}))

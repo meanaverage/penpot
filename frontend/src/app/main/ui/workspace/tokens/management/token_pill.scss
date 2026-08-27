@@ -13,7 +13,8 @@
 
   cursor: pointer;
   display: grid;
-  grid-template-columns: auto 1fr;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-rows: auto auto;
   align-items: center;
   gap: $sz-6;
   border: $b-1 solid var(--token-pill-border);
@@ -26,8 +27,23 @@
 }
 
 .token-pill-no-icon {
-  grid-template-columns: 1fr;
+  grid-template-columns: minmax(0, 1fr);
   padding: var(--sp-xxs) var(--sp-s);
+}
+
+.token-value {
+  grid-column: 2;
+  overflow: hidden;
+  max-width: 100%;
+  color: var(--color-foreground-secondary);
+  font-size: 0.6875rem;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.token-pill-no-icon .token-value {
+  grid-column: 1;
 }
 
 .name-wrapper {

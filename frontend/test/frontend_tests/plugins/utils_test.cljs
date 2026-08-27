@@ -83,6 +83,18 @@
     (t/is (string? @captured))
     (t/is (not= "" @captured))))
 
+(t/deftest test-handle-error-empty-explain-when-throwing
+  ;; Manifest-v2 plugins throw validation failures. Preserve the raw explain
+  ;; when Malli cannot render a field message so callers never receive only
+  ;; the generic "Value not valid. Code: :error" fallback.
+  (let [cause (ex-info "invalid" {:app.common.schema/explain {:errors [] :value 1}})]
+    (with-redefs [plugins.utils/throw-validation-errors? (constantly true)]
+      (try
+        ((plugins.utils/handle-error #uuid "00000000-0000-0000-0000-000000000000") cause)
+        (t/is false "Expected the validation handler to throw")
+        (catch js/Error error
+          (t/is (re-find #":errors" (.-message error))))))))
+
 (t/deftest test-error-messages-empty-returns-nil
   ;; `error-messages` returns nil (not "") on an explain with no mappable
   ;; errors, so `handle-error` can distinguish "no message" from a real one.

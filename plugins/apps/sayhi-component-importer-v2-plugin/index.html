@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SayHi component importer V2</title>
+    <script type="module" src="/src/ui.ts"></script>
+  </head>
+  <body>
+    <main class="importer-shell">
+      <div class="eyebrow">Projection manifest · V2</div>
+      <h1>Component importer V2</h1>
+      <p class="intro">
+        Materialize one canonical component manifest into native Penpot shapes,
+        tokens, themes, anatomy, and motion metadata.
+      </p>
+      <dl class="coverage" aria-label="Manifest coverage">
+        <div>
+          <dt>Nodes</dt>
+          <dd id="node-count">0</dd>
+        </div>
+        <div>
+          <dt>Token sets</dt>
+          <dd id="set-count">0</dd>
+        </div>
+        <div>
+          <dt>Bindings</dt>
+          <dd id="binding-count">0</dd>
+        </div>
+      </dl>
+      <button id="import" type="button">Import Verify through V2</button>
+      <button id="export" class="quiet" type="button">
+        Export canonical manifest
+      </button>
+      <p id="status" class="status" role="status" aria-live="polite">
+        V1 remains installed as an independent comparison baseline.
+      </p>
+      <button id="close" class="quiet close" type="button">Close</button>
+    </main>
+  </body>
+</html>
