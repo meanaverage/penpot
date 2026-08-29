@@ -18,6 +18,7 @@
    [app.main.data.plugins :as dp]
    [app.main.data.profile :as dprof]
    [app.main.data.project :as dpj]
+   [app.main.data.sayhi.surface :as sayhi.surface]
    [app.main.refs :as refs]
    [app.main.router :as rt]
    [app.main.store :as st]
@@ -36,6 +37,7 @@
    [app.main.ui.dashboard.templates :refer [templates-section*]]
    [app.main.ui.hooks :as hooks]
    [app.main.ui.modal :refer [modal-container*]]
+   [app.main.ui.sayhi.surface-chrome :refer [surface-chrome-host*]]
    [app.main.ui.workspace.plugins]
    [app.plugins.register :as preg]
    [app.util.dom :as dom]
@@ -325,7 +327,12 @@
         on-layout-change
         (mf/use-fn
          (fn [value]
-           (reset! layout* (keyword value))))]
+           (reset! layout* (keyword value))))
+
+        surface?        (sayhi.surface/enabled?
+                         cf/sayhi-surface
+                         (.-search (.-location js/window))
+                         (.-hash (.-location js/window)))]
 
     (hooks/use-shortcuts ::dashboard sc/shortcuts-dashboard :dashboard)
 
@@ -374,7 +381,13 @@
                               :search-term search-term
                               :team team
                               :layout layout
-                              :on-layout-change on-layout-change}]]]))
+                              :on-layout-change on-layout-change}]
+      (when surface?
+        [:> surface-chrome-host*
+         {:controls-visible true
+          :canvas-bottom-inset 0
+          :motion-available false
+          :motion-open false}])]]))
 
 (mf/defc dashboard-page*
   {::mf/lazy-load true}

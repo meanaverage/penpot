@@ -27,6 +27,7 @@
    [app.main.ui.ds.buttons.button :refer [button*]]
    [app.main.ui.ds.buttons.icon-button :refer [icon-button*]]
    [app.main.ui.ds.foundations.assets.icon :as i]
+   [app.main.ui.sayhi.motion-context :as sayhi.motion-context]
    [app.util.dom :as dom]
    [app.util.i18n :refer [tr]]
    [app.util.keyboard :as kbd]
@@ -341,6 +342,8 @@
 
         plugins-enabled? (features/active-feature? @st/state "plugins/runtime")
         read-only?       (mf/use-ctx ctx/workspace-read-only?)
+        motion-toolbar   (sayhi.motion-context/toolbar-model
+                          (mf/use-ctx sayhi.motion-context/controls))
 
         mcp-conn-status  (get mcp :connection-status)
         mcp-valid-token? (get mcp :token-valid)
@@ -351,7 +354,7 @@
                               mcp-enabled?
                               mcp-valid-token?)
 
-        separator?       (or plugins-enabled? *assert* mcp-show?)
+        separator?       (or motion-toolbar plugins-enabled? *assert* mcp-show?)
 
         on-display-plugins-manager
         (mf/use-fn
@@ -445,6 +448,18 @@
 
         (when separator?
           [:div {:class (stl/css :toolbar-separator)}])
+
+        (when motion-toolbar
+          [:li {:class (stl/css :toolbar-option)}
+           [:> icon-button* {:variant "ghost"
+                             :tooltip-placement "bottom"
+                             :aria-pressed (:open? motion-toolbar)
+                             :aria-label (:label motion-toolbar)
+                             :icon i/play
+                             :disabled (not (:available? motion-toolbar))
+                             :on-click (:on-toggle motion-toolbar)
+                             :data-testid "sayhi-motion-studio-btn"
+                             :data-tool "sayhi-motion-studio"}]])
 
         (when plugins-enabled?
           [:li {:class (stl/css :toolbar-option)}

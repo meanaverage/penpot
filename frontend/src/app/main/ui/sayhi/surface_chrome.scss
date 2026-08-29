@@ -1,0 +1,22 @@
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+.surface-chrome-host {
+  position: fixed;
+  inset-inline-start: 50%;
+  inset-block-end: calc(1rem + var(--sayhi-canvas-bottom-inset, 0px));
+  z-index: calc(var(--z-index-panels) + 1);
+  inline-size: min(47rem, 100vw);
+  min-block-size: 5rem;
+  border: 0;
+  background: transparent;
+  transform: translateX(-50%);
+  transition:
+    block-size 120ms ease,
+    inset-block-end 180ms ease;
+}
+
+.surface-chrome-host[data-studio-app="pages"] {
+  inline-size: min(86rem, calc(100vw - 2rem));
+}

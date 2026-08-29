@@ -17,6 +17,7 @@
    [app.common.types.shape :as cts]
    [app.common.types.shape.layout :as ctl]
    [app.main.data.modal :as modal]
+   [app.main.data.sayhi.component-artifact :as sayhi.component-artifact]
    [app.main.data.workspace :as dw]
    [app.main.data.workspace.transforms :as dwt]
    [app.main.data.workspace.variants :as dwv]
@@ -661,6 +662,11 @@
           [:> grid-edition-bar* {:shape editing-shape}])])
 
      [:div {:class (stl/css :viewport-overlays)}
+      [:div {:id sayhi.component-artifact/canvas-runtime-root-id
+             :style {:position "absolute"
+                     :inset 0
+                     :overflow "hidden"
+                     :pointer-events "none"}}]
       (when show-comments?
         [:> comments/comments-layer* {:vbox vbox
                                       :page-id page-id
