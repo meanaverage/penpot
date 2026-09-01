@@ -33,6 +33,7 @@
    [app.common.types.shape.shadow :as ctss]
    [app.common.types.text :as txt]
    [app.common.uuid :as uuid]
+   [app.config :as cf]
    [app.main.data.exports.assets :as de]
    [app.main.data.exports.wasm :as wasm.exports]
    [app.main.data.persistence :as dwp]
@@ -51,6 +52,7 @@
    [app.main.features :as features]
    [app.main.repo :as rp]
    [app.main.store :as st]
+   [app.plugins.export-uri.v2 :as export-uri-v2]
    [app.plugins.exports :as exports]
    [app.plugins.fills :as fills]
    [app.plugins.flex :as flex]
@@ -75,6 +77,12 @@
 (declare shape-proxy?)
 ;; This is injected from plugin/librraies
 (def variant-proxy nil)
+
+(defn- resolve-export-download-uri
+  [uri]
+  (if (some? cf/sayhi-surface)
+    (export-uri-v2/resolve-download-uri uri (.-href js/location))
+    uri))
 
 (defn interaction-proxy? [p]
   (obj/type-of? p "InteractionProxy"))
@@ -1578,7 +1586,7 @@
                               (rp/cmd! :export payload))
                              (rx/mapcat (fn [{:keys [uri]}]
                                           (->> (http/send! {:method :get
-                                                            :uri uri
+                                                            :uri (resolve-export-download-uri uri)
                                                             :response-type :blob
                                                             :omit-default-headers true})
                                                (rx/map :body))))
