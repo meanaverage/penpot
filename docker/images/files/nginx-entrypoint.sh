@@ -10,6 +10,8 @@ is_falsy() {
   [[ "$value" == "false" || "$value" == "f" || "$value" == "0" ]]
 }
 
+source /runtime-config.sh
+
 
 #########################################
 ## Air Gapped config
@@ -26,26 +28,50 @@ fi
 
 update_flags() {
   if [ -n "$PENPOT_FLAGS" ]; then
-    echo "$(sed \
-      -e "s|^//var penpotFlags = .*;|var penpotFlags = \"$PENPOT_FLAGS\";|g" \
-      "$1")" > "$1"
+    upsert_javascript_string_config "$1" "penpotFlags" "$PENPOT_FLAGS"
   fi
 
   if [ -n "$PENPOT_PUBLIC_URI" ]; then
-      echo "var penpotPublicURI = \"$PENPOT_PUBLIC_URI\";" >> "$1";
+    validate_http_url_config "PENPOT_PUBLIC_URI" "$PENPOT_PUBLIC_URI"
+    upsert_javascript_string_config "$1" "penpotPublicURI" "$PENPOT_PUBLIC_URI"
   fi
 }
 
 update_oidc_name() {
   if [ -n "$PENPOT_OIDC_NAME" ]; then
-    echo "$(sed \
-      -e "s|^//var penpotOIDCName = .*;|var penpotOIDCName = \"$PENPOT_OIDC_NAME\";|g" \
-      "$1")" > "$1"
+    upsert_javascript_string_config "$1" "penpotOIDCName" "$PENPOT_OIDC_NAME"
+  fi
+}
+
+update_sayhi_surface() {
+  if [ -n "$PENPOT_SAYHI_SURFACE" ]; then
+    if [[ "$PENPOT_SAYHI_SURFACE" != "canvas" ]]; then
+      echo "PENPOT_SAYHI_SURFACE must be canvas" >&2
+      exit 1
+    fi
+
+    upsert_javascript_string_config "$1" "penpotSayHiSurface" "$PENPOT_SAYHI_SURFACE"
+  fi
+}
+
+update_sayhi_uri() {
+  local file="$1"
+  local environment_variable="$2"
+  local javascript_variable="$3"
+  local value="${!environment_variable}"
+
+  if [ -n "$value" ]; then
+    validate_http_url_config "$environment_variable" "$value"
+    upsert_javascript_string_config "$file" "$javascript_variable" "$value"
   fi
 }
 
 update_flags /var/www/app/js/config.js
 update_oidc_name /var/www/app/js/config.js
+update_sayhi_surface /var/www/app/js/config.js
+update_sayhi_uri /var/www/app/js/config.js "PENPOT_SAYHI_STUDIO_CHROME_URI" "penpotSayHiStudioChromeURI"
+update_sayhi_uri /var/www/app/js/config.js "PENPOT_SAYHI_MOTION_STUDIO_URI" "penpotSayHiMotionStudioURI"
+update_sayhi_uri /var/www/app/js/config.js "PENPOT_SAYHI_WEB_RUNTIME_URI" "penpotSayHiWebRuntimeURI"
 
 #########################################
 ## Nginx Config

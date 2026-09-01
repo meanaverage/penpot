@@ -13,6 +13,12 @@
    [frontend-tests.data.nitrate-test]
    [frontend-tests.data.profile-test]
    [frontend-tests.data.repo-test]
+   [frontend-tests.data.sayhi-component-artifact-test]
+   [frontend-tests.data.sayhi-motion-host-test]
+   [frontend-tests.data.sayhi-motion-preview-test]
+   [frontend-tests.data.sayhi-surface-chrome-test]
+   [frontend-tests.data.sayhi-surface-test]
+   [frontend-tests.data.sayhi-web-runtime-host-test]
    [frontend-tests.data.store-test]
    [frontend-tests.data.uploads-test]
    [frontend-tests.data.viewer-test]
@@ -78,6 +84,7 @@
    [frontend-tests.ui.layout-container-multiple-test]
    [frontend-tests.ui.measures-menu-props-test]
    [frontend-tests.ui.routes-test]
+   [frontend-tests.ui.sayhi-motion-context-test]
    [frontend-tests.ui.settings-password-schema-test]
    [frontend-tests.ui.settings-shortcuts-test]
    [frontend-tests.util-clipboard-test]
@@ -111,6 +118,12 @@
    'frontend-tests.data.nitrate-test
    'frontend-tests.data.profile-test
    'frontend-tests.data.repo-test
+   'frontend-tests.data.sayhi-component-artifact-test
+   'frontend-tests.data.sayhi-motion-host-test
+   'frontend-tests.data.sayhi-motion-preview-test
+   'frontend-tests.data.sayhi-surface-chrome-test
+   'frontend-tests.data.sayhi-surface-test
+   'frontend-tests.data.sayhi-web-runtime-host-test
    'frontend-tests.data.store-test
    'frontend-tests.data.exports-assets-test
    'frontend-tests.data.uploads-test
@@ -175,6 +188,7 @@
    'frontend-tests.ui.layout-container-multiple-test
    'frontend-tests.ui.measures-menu-props-test
    'frontend-tests.ui.routes-test
+   'frontend-tests.ui.sayhi-motion-context-test
    'frontend-tests.render-dimensions-test
    'frontend-tests.text-editor-paste-guard-test
    'frontend-tests.ui.settings-password-schema-test

@@ -165,6 +165,10 @@
 (def plugins-list-uri     (obj/get global "penpotPluginsListURI" "https://penpot.app/penpothub/plugins"))
 (def plugins-whitelist    (into #{} (obj/get global "penpotPluginsWhitelist" [])))
 (def templates-uri        (obj/get global "penpotTemplatesURI" "https://penpot.github.io/penpot-files/"))
+(def sayhi-surface        (obj/get global "penpotSayHiSurface"))
+(def sayhi-studio-chrome-uri (obj/get global "penpotSayHiStudioChromeURI"))
+(def sayhi-motion-studio-uri (obj/get global "penpotSayHiMotionStudioURI"))
+(def sayhi-web-runtime-uri (obj/get global "penpotSayHiWebRuntimeURI"))
 (def upload-chunk-size    (obj/get global "penpotUploadChunkSize" (* 1024 1024 25))) ;; 25 MiB
 
 ;; We set the current parsed flags under common for make

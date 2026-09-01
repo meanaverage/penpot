@@ -13,6 +13,8 @@
    [app.main.data.helpers :as dsh]
    [app.main.data.persistence :as dps]
    [app.main.data.plugins :as dpl]
+   [app.main.data.sayhi.component-artifact :as sayhi.component-artifact]
+   [app.main.data.sayhi.surface :as sayhi.surface]
    [app.main.data.workspace :as dw]
    [app.main.features :as features]
    [app.main.fonts :as fonts]
@@ -24,6 +26,10 @@
    [app.main.ui.hooks :as hooks]
    [app.main.ui.hooks.resize :refer [use-resize-observer]]
    [app.main.ui.modal :refer [modal-container*]]
+   [app.main.ui.sayhi.motion-context :as sayhi.motion-context]
+   [app.main.ui.sayhi.motion-editor :refer [motion-editor*]]
+   [app.main.ui.sayhi.surface-chrome :refer [surface-chrome-host*]]
+   [app.main.ui.sayhi.web-runtime :refer [canvas-runtime*]]
    [app.main.ui.workspace.colorpicker]
    [app.main.ui.workspace.components-debugger :refer [components-debugger*]]
    [app.main.ui.workspace.context-menu :refer [context-menu*]]
@@ -54,7 +60,7 @@
 
 (mf/defc workspace-content*
   {::mf/private true}
-  [{:keys [file layout page wglobal]}]
+  [{:keys [file layout page wglobal on-palette-inset-change]}]
 
   (let [palete-size (mf/use-state nil)
         selected    (mf/deref refs/selected-shapes)
@@ -88,6 +94,12 @@
            (reset! palete-size size)))
 
         node-ref (use-resize-observer on-resize)]
+
+    (mf/with-effect [layout @palete-size on-palette-inset-change]
+      (when on-palette-inset-change
+        (on-palette-inset-change
+         (sayhi.surface/canvas-bottom-inset layout @palete-size))))
+
     [:*
      (when (not ^boolean hide-ui?)
        [:> palette* {:layout layout
@@ -172,7 +184,7 @@
 
 (mf/defc workspace-inner*
   {::mf/private true}
-  [{:keys [page-id file-id file layout wglobal]}]
+  [{:keys [page-id file-id file layout wglobal on-palette-inset-change]}]
   (let [page-ref (mf/with-memo [file-id page-id]
                    (make-page-ref file-id page-id))
         page     (mf/deref page-ref)]
@@ -191,7 +203,8 @@
       [:> workspace-content* {:file file
                               :page page
                               :wglobal wglobal
-                              :layout layout}]
+                              :layout layout
+                              :on-palette-inset-change on-palette-inset-change}]
       [:> workspace-loader*])))
 
 (mf/defc workspace*
@@ -211,6 +224,10 @@
 
         file-loaded?     (get file ::has-data)
 
+        objects          (mf/deref refs/workspace-page-objects)
+        local            (mf/deref refs/workspace-local)
+        profile          (mf/deref refs/profile)
+
         file-name        (:name file)
         permissions      (:permissions team)
 
@@ -222,6 +239,65 @@
         wasm-renderer-enabled? (features/use-feature "render-wasm/v1")
 
         first-frame-rendered?  (mf/use-state false)
+
+        surface?         (sayhi.surface/enabled?
+                          cf/sayhi-surface
+                          (.-search (.-location js/window))
+                          (.-hash (.-location js/window)))
+        palette-inset*   (mf/use-state 0)
+        motion-open*     (mf/use-state false)
+        preview-message* (mf/use-state nil)
+        motion-state*    (mf/use-state nil)
+        controls-visible (not (contains? layout :hide-ui))
+
+        component-source (when surface?
+                           (sayhi.component-artifact/resolve-selected-component
+                            objects
+                            (:selected local)))
+        component-shape  (when component-source
+                           (get objects (:shape-id component-source)))
+        motion-available (and (string? cf/sayhi-motion-studio-uri)
+                              (string? cf/sayhi-web-runtime-uri)
+                              (some? (:artifact component-source))
+                              (some? (:motion-document component-source)))
+
+        on-palette-inset-change
+        (mf/use-fn
+         (fn [value]
+           (reset! palette-inset* value)))
+
+        on-toggle-controls
+        (mf/use-fn
+         (fn []
+           (st/emit! (dw/toggle-layout-flag :hide-ui))))
+
+        on-toggle-motion
+        (mf/use-fn
+         (mf/deps motion-available)
+         (fn []
+           (when motion-available
+             (swap! motion-open* not))))
+
+        on-close-motion
+        (mf/use-fn #(reset! motion-open* false))
+
+        motion-controls
+        (when surface?
+          {:available? motion-available
+           :open? @motion-open*
+           :on-toggle on-toggle-motion})
+
+        on-motion-preview
+        (mf/use-fn
+         (fn [message]
+           (reset! preview-message*
+                   {:sequence (random-uuid)
+                    :message message})))
+
+        on-motion-state
+        (mf/use-fn
+         (fn [message]
+           (reset! motion-state* message)))
 
         background-color (:background-color wglobal)]
 
@@ -254,6 +330,12 @@
       (when (and file-loaded? (not page-id))
         (st/emit! (dcm/go-to-workspace :file-id file-id ::rt/replace true))))
 
+    (mf/with-effect [motion-available]
+      (when-not motion-available
+        (reset! motion-open* false)
+        (reset! preview-message* nil)
+        (reset! motion-state* nil)))
+
     (mf/with-effect [file-id page-id]
       (reset! first-frame-rendered? false))
 
@@ -270,27 +352,66 @@
       [:> (mf/provider ctx/current-page-id) {:value page-id}
        [:> (mf/provider ctx/design-tokens) {:value design-tokens?}
         [:> (mf/provider ctx/workspace-read-only?) {:value read-only?}
-         [:> modal-container*]
-         [:> components-debugger*]
-         [:section {:class (stl/css :workspace)
-                    :style {:background-color background-color
-                            :touch-action "none"
-                            :position "relative"}}
-          [:> context-menu*]
-          (when (and file-loaded? page-id)
-            [:> workspace-inner*
-             {:page-id page-id
-              :file-id file-id
-              :file file
-              :wglobal wglobal
-              :layout layout}])
-          (when (or (not (and file-loaded? page-id))
-                    ;; in wasm renderer, extend the pixel loader until the first frame is rendered
-                    ;; but do not apply it when switching pages
-                    (and wasm-renderer-enabled?
-                         (not file-loaded?)
-                         (not @first-frame-rendered?)))
-            [:> workspace-loader*])]]]]]]))
+         [:> (mf/provider sayhi.motion-context/controls) {:value motion-controls}
+          [:> modal-container*]
+          [:> components-debugger*]
+          [:section {:class (stl/css-case :workspace true
+                                          :sayhi-studio-surface surface?)
+                     :style {:background-color background-color
+                             :touch-action "none"
+                             :position "relative"
+                             :--sayhi-canvas-bottom-inset (dm/str @palette-inset* "px")}}
+           [:> context-menu*]
+           (when (and file-loaded? page-id)
+             [:> workspace-inner*
+              {:page-id page-id
+               :file-id file-id
+               :file file
+               :wglobal wglobal
+               :layout layout
+               :on-palette-inset-change on-palette-inset-change}])
+
+           (when surface?
+             [:> surface-chrome-host*
+              {:controls-visible controls-visible
+               :on-toggle-controls on-toggle-controls
+               :canvas-bottom-inset @palette-inset*
+               :motion-available motion-available
+               :motion-open @motion-open*
+               :on-toggle-motion on-toggle-motion}])
+
+           (when (and surface? @motion-open* component-shape)
+             [:> canvas-runtime*
+              {:file-id file-id
+               :page-id page-id
+               :component-source component-source
+               :shape component-shape
+               :vbox (:vbox local)
+               :zoom (:zoom local)
+               :runtime-uri cf/sayhi-web-runtime-uri
+               :motion-message @preview-message*
+               :on-motion-state on-motion-state}])
+
+           (when (and surface? @motion-open* motion-available)
+             [:> motion-editor*
+              {:file-id file-id
+               :page-id page-id
+               :component-source component-source
+               :studio-uri cf/sayhi-motion-studio-uri
+               :theme (:theme profile)
+               :locale (:lang profile)
+               :canvas-bottom-inset @palette-inset*
+               :preview-state @motion-state*
+               :on-preview on-motion-preview
+               :on-close on-close-motion}])
+
+           (when (or (not (and file-loaded? page-id))
+                     ;; in wasm renderer, extend the pixel loader until the first frame is rendered
+                     ;; but do not apply it when switching pages
+                     (and wasm-renderer-enabled?
+                          (not file-loaded?)
+                          (not @first-frame-rendered?)))
+             [:> workspace-loader*])]]]]]]]))
 
 (mf/defc workspace-page*
   {::mf/lazy-load true}
@@ -302,4 +423,3 @@
 
     (when (uuid? file-id)
       [:> workspace* props])))
-
