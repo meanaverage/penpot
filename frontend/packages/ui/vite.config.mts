@@ -3,12 +3,13 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import dts from 'vite-plugin-dts';
 import * as path from 'path';
-import { copyFileSync } from 'node:fs';
+import { copyFileSync, mkdirSync } from 'node:fs';
 
 const copyCssPlugin = () => ({
   name: 'copy-css',
   closeBundle: () => {
     try {
+      mkdirSync('../../resources/public/css', { recursive: true });
       copyFileSync(
         'dist/ui.css',
         '../../resources/public/css/ui.css',

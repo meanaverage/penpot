@@ -48,6 +48,7 @@
    [frontend-tests.main-errors-test]
    [frontend-tests.plugins.comments-test]
    [frontend-tests.plugins.context-shapes-test]
+   [frontend-tests.plugins.export-uri-v2-test]
    [frontend-tests.plugins.file-test]
    [frontend-tests.plugins.format-test]
    [frontend-tests.plugins.grid-test]
@@ -154,6 +155,7 @@
    'frontend-tests.logic.update-position-test
    'frontend-tests.plugins.comments-test
    'frontend-tests.plugins.context-shapes-test
+   'frontend-tests.plugins.export-uri-v2-test
    'frontend-tests.plugins.file-test
    'frontend-tests.plugins.format-test
    'frontend-tests.plugins.grid-test
