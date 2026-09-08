@@ -151,7 +151,11 @@
                                                                     (* order (:stagger step)))
                                                                  1000)
                                                        :easing (:ease step)
-                                                       :fill "forwards"
+                                                       ;; A repeated trigger rebuilds these animations from
+                                                       ;; the committed semantic slot state. Backwards fill
+                                                       ;; keeps that state visible during delay/stagger instead
+                                                       ;; of exposing the authored DOM position between runs.
+                                                       :fill "both"
                                                        :iterations 1}
                                      animation    (.animate target #js [from to] options)
                                      appearance-animations
@@ -192,10 +196,68 @@
      :duration duration
      :animations animations}))
 
+(defn- indicator-slot-keyframe
+  [source target]
+  (let [frame (js-obj)
+        x     (- (frame-center target :x :width)
+                 (frame-center source :x :width))
+        y     (- (frame-center target :y :height)
+                 (frame-center source :y :height))]
+    (gobj/set frame "translate" (str x "px " y "px"))
+    (gobj/set frame "transformOrigin" "center center")
+    frame))
+
+(defn- create-cycle-indicator-track
+  [document step cycle-offsets]
+  (let [operation     (:operation step)
+        group-id      (:groupId operation)
+        slots         (:slots operation)
+        slot-count    (count slots)
+        offset        (wrap-index (get cycle-offsets group-id 0) slot-count)
+        delta         (:delta operation)
+        initial-slot  (:initialSlot operation)
+        current-slot  (wrap-index (- initial-slot offset) slot-count)
+        next-slot     (wrap-index (- initial-slot (+ offset delta)) slot-count)
+        source-frame  (:sourceFrame operation)
+        target        (first (query-targets document [(:selector operation)]))
+        options       #js {:duration (* (:duration step) 1000)
+                           :delay (* (:at step) 1000)
+                           :easing (:ease step)
+                           ;; Keep the committed indicator slot visible during
+                           ;; the response delay. Without backwards fill, a
+                           ;; repeated trigger exposes the authored center slot
+                           ;; before jumping back to its logical start position.
+                           :fill "both"
+                           :iterations 1}
+        animation     (when target
+                        (.animate
+                         target
+                         #js [(indicator-slot-keyframe source-frame
+                                                       (get slots current-slot))
+                              (indicator-slot-keyframe source-frame
+                                                       (get slots next-slot))]
+                         options))]
+    (when animation
+      (.pause animation)
+      (set! (.-currentTime animation) 0))
+    {:id (:id step)
+     :driver (:driver step)
+     :requestedDriver (:requestedDriver step)
+     :previewAdapter (:previewAdapter step)
+     :translationMode (:translationMode step)
+     :operation operation
+     :duration (+ (:at step) (:duration step))
+     :animations (cond-> [] animation (conj animation))}))
+
 (defn- create-track
   [document step cycle-offsets]
-  (if (= "cycle" (get-in step [:operation :type]))
+  (case (get-in step [:operation :type])
+    "cycle"
     (create-cycle-track document step cycle-offsets)
+
+    "cycle-indicator"
+    (create-cycle-indicator-track document step cycle-offsets)
+
     (let [targets    (query-targets document (:selectors step))
           from       (motion-keyframe (:from step))
           to         (motion-keyframe (:to step))

@@ -34,6 +34,7 @@
    [app.main.ui.ds.product.loader :refer [loader*]]
    [app.main.ui.hooks :as h]
    [app.main.ui.icons :as deprecated-icon]
+   [app.main.ui.thumbnail-recovery :as thumbnail-recovery]
    [app.main.worker :as mw]
    [app.util.color :as uc]
    [app.util.dom :as dom]
@@ -93,7 +94,30 @@
         bg-color     (dm/get-in file [:data :background])
 
         container    (mf/use-ref)
-        visible?     (h/use-visible container :once? true)]
+        visible?     (h/use-visible container :once? true)
+        failed-thumbnail-id (mf/use-state nil)
+        thumbnail-visible? (thumbnail-recovery/cached-image-visible?
+                            true
+                            thumbnail-id
+                            @failed-thumbnail-id)
+
+        on-thumbnail-error
+        (mf/use-fn
+         (fn []
+           ;; File thumbnails are a disposable cache. If its media object was
+           ;; removed or the stored URI is stale, discard the local reference
+           ;; so the existing generation effect replaces it for this exact
+           ;; file revision instead of leaving a broken-media icon forever.
+           (when (and thumbnail-id
+                      (not= thumbnail-id @failed-thumbnail-id))
+             (reset! failed-thumbnail-id thumbnail-id)
+             (when can-edit
+               (st/emit! (dd/set-file-thumbnail file-id nil))))))]
+
+    (mf/with-effect [thumbnail-id]
+      (when (and thumbnail-id
+                 (not= thumbnail-id @failed-thumbnail-id))
+        (reset! failed-thumbnail-id nil)))
 
     (mf/with-effect [file-id revn visible? thumbnail-id]
       (when (and can-edit visible? (not thumbnail-id))
@@ -113,12 +137,13 @@
            :style {:background-color bg-color}
            :ref container}
      (when visible?
-       (if thumbnail-id
+       (if thumbnail-visible?
          [:img {:class (stl/css :grid-item-thumbnail-image)
                 :draggable (dm/str can-edit)
                 :src (cf/resolve-media thumbnail-id)
                 :loading "lazy"
-                :decoding "async"}]
+                :decoding "async"
+                :on-error on-thumbnail-error}]
          (when can-edit
            [:> loader* {:class (stl/css :grid-loader)
                         :draggable (dm/str can-edit)

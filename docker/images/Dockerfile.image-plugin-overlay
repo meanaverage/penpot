@@ -1,0 +1,21 @@
+# Plugin-only release on an already verified, coherent full frontend image.
+# Never copy compiled app chunks from a worktree or resume a frontend build here.
+ARG FRONTEND_IMAGE
+FROM ${FRONTEND_IMAGE}
+ARG FRONTEND_IMAGE_ID
+ARG VERSION_TAG
+ARG IMAGE_PLUGIN_SHA256
+USER root
+COPY --chown=1001:1001 frontend/target/dist/plugins/sayhi-image-component/image-plugin.js /var/www/app/plugins/sayhi-image-component/image-plugin.js
+COPY --chown=1001:1001 frontend/target/dist/plugins/sayhi-image-component/artifact.json /var/www/app/plugins/sayhi-image-component/artifact.json
+RUN test -n "$FRONTEND_IMAGE_ID" && test -n "$VERSION_TAG" && test "$VERSION_TAG" != develop && \
+    grep -Fq "globalThis.penpotVersionTag = \"$VERSION_TAG\";" /var/www/app/index.html && \
+    grep -Fq "?version=$VERSION_TAG" /var/www/app/index.html && \
+    grep -Fq "$VERSION_TAG" /var/www/app/js/main.js && \
+    test -n "$IMAGE_PLUGIN_SHA256" && \
+    echo "$IMAGE_PLUGIN_SHA256  /var/www/app/plugins/sayhi-image-component/image-plugin.js" | sha256sum -c - && \
+    grep -Fq "$IMAGE_PLUGIN_SHA256" /var/www/app/plugins/sayhi-image-component/artifact.json
+LABEL io.sayhi.penpot.frontend.version-tag="$VERSION_TAG" \
+      io.sayhi.penpot.parent-image="$FRONTEND_IMAGE_ID" \
+      io.sayhi.penpot.image-component-plugin="$IMAGE_PLUGIN_SHA256"
+USER penpot:penpot

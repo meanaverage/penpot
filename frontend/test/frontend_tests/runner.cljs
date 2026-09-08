@@ -10,9 +10,14 @@
    [frontend-tests.data.exports-assets-test]
    [frontend-tests.data.nitrate-test]
    [frontend-tests.data.repo-test]
+   [frontend-tests.data.sayhi-image-component-test]
    [frontend-tests.data.sayhi-motion-studio-test]
+   [frontend-tests.data.sayhi-page-preview-test]
+   [frontend-tests.data.sayhi-studio-canvas-test]
+   [frontend-tests.data.sayhi-studio-chrome-test]
    [frontend-tests.data.sayhi-web-materializer-test]
    [frontend-tests.data.sayhi-web-preview-test]
+   [frontend-tests.data.sayhi-web-runtime-host-test]
    [frontend-tests.data.store-test]
    [frontend-tests.data.uploads-test]
    [frontend-tests.data.viewer-test]
@@ -36,6 +41,7 @@
    [frontend-tests.main-errors-test]
    [frontend-tests.plugins.comments-test]
    [frontend-tests.plugins.context-shapes-test]
+   [frontend-tests.plugins.export-uri-v2-test]
    [frontend-tests.plugins.file-test]
    [frontend-tests.plugins.format-test]
    [frontend-tests.plugins.grid-test]
@@ -64,6 +70,7 @@
    [frontend-tests.ui.ds-controls-numeric-input-test]
    [frontend-tests.ui.measures-menu-props-test]
    [frontend-tests.ui.presence-model-test]
+   [frontend-tests.ui.thumbnail-recovery-test]
    [frontend-tests.util-object-test]
    [frontend-tests.util-range-tree-test]
    [frontend-tests.util-simple-math-test]
@@ -93,7 +100,12 @@
    'frontend-tests.data.nitrate-test
    'frontend-tests.data.repo-test
    'frontend-tests.data.sayhi-web-preview-test
+   'frontend-tests.data.sayhi-web-runtime-host-test
    'frontend-tests.data.sayhi-motion-studio-test
+   'frontend-tests.data.sayhi-page-preview-test
+   'frontend-tests.data.sayhi-studio-chrome-test
+   'frontend-tests.data.sayhi-image-component-test
+   'frontend-tests.data.sayhi-studio-canvas-test
    'frontend-tests.data.sayhi-web-materializer-test
    'frontend-tests.data.store-test
    'frontend-tests.data.exports-assets-test
@@ -119,6 +131,7 @@
    'frontend-tests.logic.pasting-in-containers-test
    'frontend-tests.plugins.context-shapes-test
    'frontend-tests.plugins.comments-test
+   'frontend-tests.plugins.export-uri-v2-test
    'frontend-tests.plugins.file-test
    'frontend-tests.plugins.format-test
    'frontend-tests.plugins.grid-test
@@ -147,6 +160,7 @@
    'frontend-tests.ui.ds-controls-numeric-input-test
    'frontend-tests.ui.measures-menu-props-test
    'frontend-tests.ui.presence-model-test
+   'frontend-tests.ui.thumbnail-recovery-test
    'frontend-tests.render-wasm.process-objects-test
    'frontend-tests.text-editor-paste-guard-test
    'frontend-tests.util-object-test

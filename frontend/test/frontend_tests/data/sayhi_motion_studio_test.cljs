@@ -4,11 +4,53 @@
 
 (ns frontend-tests.data.sayhi-motion-studio-test
   (:require
+   [app.main.data.sayhi.motion-host.v1 :as motion-host-v1]
    [app.main.data.sayhi.motion-studio :as motion-studio]
+   [app.main.ui.sayhi.motion-dock-sizing :as dock-sizing]
    [cljs.test :as t :include-macros true]))
 
 (def ^:private shared-namespace
   (keyword "shared" "io.sayhi.studio"))
+
+(t/deftest motion-layout-is-bounded-and-separate-from-editing
+  (let [message {:schema "io.sayhi.studio.motion-layout"
+                 :schemaVersion "1.0" :type "studio.bounds" :payload {:height 250}}]
+    (t/is (= 250 (dock-sizing/content-height (clj->js message))))
+    (doseq [height [-1 0 63 4097 250.5 "250" js/Infinity nil]]
+      (t/is (nil? (dock-sizing/content-height (clj->js (assoc-in message [:payload :height] height))))))
+    (doseq [invalid [(assoc message :type "studio.motion.write")
+                     (assoc message :schemaVersion "2.0")
+                     (assoc message :extra true)
+                     (assoc-in message [:payload :document] {})]]
+      (t/is (nil? (dock-sizing/content-height (clj->js invalid)))))))
+
+(t/deftest motion-layout-cannot-grow-beyond-the-available-viewport
+  (t/is (= 296 (dock-sizing/fit-height 296 700)))
+  (t/is (= 144 (dock-sizing/fit-height 50 700)))
+  (t/is (= 400 (dock-sizing/fit-height 900 400)))
+  (t/is (= 80 (dock-sizing/fit-height 300 80))))
+
+(t/deftest motion-collapse-is-explicit-and-carries-no-editing-authority
+  (let [message {:schema "io.sayhi.studio.motion-layout"
+                 :schemaVersion "1.0" :type "studio.presentation" :payload {:collapsed true}}]
+    (t/is (true? (dock-sizing/collapsed-state (clj->js message))))
+    (t/is (false? (dock-sizing/collapsed-state (clj->js (assoc-in message [:payload :collapsed] false)))))
+    (t/is (nil? (dock-sizing/content-height (clj->js message))))
+    (doseq [invalid [(assoc message :schemaVersion "2.0")
+                     (assoc message :schema "io.sayhi.penpot.motion-host")
+                     (assoc message :type "studio.motion.write")
+                     (assoc message :extra true)
+                     (assoc-in message [:payload :height] 64)
+                     (assoc-in message [:payload :document] {})
+                     (assoc-in message [:payload :collapsed] "false")
+                     (assoc-in message [:payload :collapsed] nil)
+                     (assoc-in message [:payload :collapsed] 0)]]
+      (t/is (nil? (dock-sizing/collapsed-state (clj->js invalid)))))))
+
+(t/deftest motion-collapsed-bar-is-not-subject-to-expanded-minimum
+  (t/is (= 66 (dock-sizing/fit-height 66 700 64)))
+  (t/is (= 40 (dock-sizing/fit-height 66 40 64)))
+  (t/is (= 144 (dock-sizing/fit-height 66 700))))
 
 (defn- component-shape
   ([] (component-shape nil))
@@ -99,6 +141,59 @@
            :stagger 0.025
            :from {:x 18 :rotation 1.4 :autoAlpha 0.72}
            :to {:x 0 :rotation 0 :autoAlpha 1}}]}]}]}}})
+
+(defn- host-message
+  [type payload]
+  (clj->js {:schema motion-host-v1/schema-name
+            :schemaVersion motion-host-v1/schema-version
+            :type type
+            :payload payload}))
+
+(t/deftest inbound-host-messages-are-bounded-and-versioned
+  (t/is (= {:schema motion-host-v1/schema-name
+            :schemaVersion motion-host-v1/schema-version
+            :type "studio.preview.command"
+            :payload {:command "seek" :progress 0.25}}
+           (motion-host-v1/assert-inbound-message
+            (host-message "studio.preview.command"
+                          {:command "seek" :progress 0.25}))))
+  (t/is (nil? (motion-host-v1/inbound-message
+               (host-message "studio.history.command"
+                             {:command "begin"
+                              :transactionId "motion.1"
+                              :label "Edit motion"}))))
+  (t/is (nil? (motion-host-v1/inbound-message
+               (clj->js {:schema motion-host-v1/schema-name
+                         :schemaVersion motion-host-v1/schema-version
+                         :type "studio.context.request"
+                         :payload {}
+                         :credentials "not allowed"}))))
+  (t/is (nil? (motion-host-v1/inbound-message
+               (host-message "studio.preview.command"
+                             {:command "seek" :progress 2}))))
+  (t/is (nil? (motion-host-v1/inbound-message
+               (host-message "studio.motion.write"
+                             {:componentId "sayhi.verify"
+                              :revision 1
+                              :label "Too large"
+                              :document {:value (apply str (repeat 1000001 "x"))}})))))
+
+(t/deftest preview-recipes-are-bound-to-the-current-component-revision
+  (let [current {:componentId "sayhi.verify" :revision 7}]
+    (t/is (true? (motion-host-v1/current-preview-recipe?
+                  {:componentId "sayhi.verify" :revision 7}
+                  current)))
+    (t/is (false? (motion-host-v1/current-preview-recipe?
+                   {:componentId "sayhi.other" :revision 7}
+                   current)))
+    (t/is (false? (motion-host-v1/current-preview-recipe?
+                   {:componentId "sayhi.verify" :revision 6}
+                   current)))))
+
+(t/deftest internal-unavailable-preview-state-has-a-public-v1-equivalent
+  (t/is (= "empty" (motion-host-v1/public-preview-status "unavailable")))
+  (t/is (= "playing" (motion-host-v1/public-preview-status "playing")))
+  (t/is (= "empty" (motion-host-v1/public-preview-status "unknown"))))
 
 (t/deftest native-host-is-an-explicit-http-mode
   (t/is (true? (motion-studio/native-mode? "native-v1" "https://studio.example/")))
@@ -221,7 +316,6 @@
     (t/is (= ["selection.read"
               "motion.read"
               "motion.write"
-              "history.transaction"
               "preview.control"
               "anatomy.highlight"]
              (:capabilities context)))))
@@ -246,7 +340,7 @@
                    :shapes [shape]
                    :theme "light"
                    :locale "en"})]
-    (t/is (= ["selection.read" "motion.read" "motion.write" "history.transaction"]
+    (t/is (= ["selection.read" "motion.read" "motion.write"]
              (:capabilities context)))
     (t/is (= "sayhi.verification-method-selector" (:componentId payload)))
     (t/is (= 0 (:revision payload)))

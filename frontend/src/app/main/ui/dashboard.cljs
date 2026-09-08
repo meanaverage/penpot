@@ -18,6 +18,7 @@
    [app.main.data.plugins :as dp]
    [app.main.data.profile :as dprof]
    [app.main.data.project :as dpj]
+   [app.main.data.sayhi.studio-canvas :as studio-canvas]
    [app.main.refs :as refs]
    [app.main.router :as rt]
    [app.main.store :as st]
@@ -35,6 +36,7 @@
    [app.main.ui.dashboard.templates :refer [templates-section*]]
    [app.main.ui.hooks :as hooks]
    [app.main.ui.modal :refer [modal-container*]]
+   [app.main.ui.sayhi.studio-chrome :as studio-chrome]
    [app.main.ui.workspace.plugins]
    [app.plugins.register :as preg]
    [app.util.dom :as dom]
@@ -336,7 +338,12 @@
         :default-project default-project
         :section section
         :search-term search-term
-        :team team}]]]))
+        :team team}]]
+     (when (and (studio-canvas/studio-surface-enabled? cf/sayhi-surface)
+                (= "external-v1" cf/sayhi-studio-chrome-mode))
+       [:> studio-chrome/studio-chrome-host*
+        {:controls-visible true
+         :canvas-bottom-inset 0}])]))
 
 (mf/defc dashboard-page*
   {::mf/lazy-load true}

@@ -503,6 +503,8 @@
             params  (if web-preview?
                       {:component (:component-id web-object)
                        :story (:story-id web-object)
+                       :source-file (str file-id)
+                       :source-page (str page-id)
                        :render-state render-state
                        :materializer (:mode materialization)
                        :artifact-key artifact-key}

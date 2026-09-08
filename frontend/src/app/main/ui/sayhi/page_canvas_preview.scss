@@ -1,0 +1,95 @@
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+@use "../ds/_borders.scss" as *;
+
+.page-canvas-preview {
+  position: absolute;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.page-canvas-preview-frame {
+  position: absolute;
+  inset: 0 auto auto 0;
+  display: block;
+  border: 0;
+  background: #fff;
+  pointer-events: none;
+  transform-origin: 0 0;
+}
+
+.compare .page-canvas-preview-frame {
+  opacity: 0.5;
+}
+
+.page-canvas-preview-toolbar {
+  position: absolute;
+  inset-inline-start: 0.5rem;
+  inset-block-start: 0.5rem;
+  z-index: 1;
+  min-inline-size: min(34rem, calc(100vw - 2rem));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.35rem 0.4rem 0.35rem 0.7rem;
+  border: $b-1 solid rgb(24 28 25 / 0.16);
+  border-radius: 0.7rem;
+  background: color-mix(in srgb, var(--color-background-primary) 94%, transparent);
+  box-shadow: 0 0.45rem 1.25rem rgb(16 20 17 / 0.14);
+  pointer-events: auto;
+  backdrop-filter: blur(0.75rem);
+
+  nav {
+    display: flex;
+    gap: 0.2rem;
+  }
+
+  button {
+    padding: 0.45rem 0.6rem;
+    border: 0;
+    border-radius: 0.5rem;
+    color: var(--color-foreground-secondary);
+    background: transparent;
+    font-size: 0.6875rem;
+    font-weight: 650;
+    cursor: pointer;
+
+    &:hover,
+    &[aria-pressed="true"] {
+      color: var(--color-foreground-primary);
+      background: var(--button-tertiary-background-color-hover);
+    }
+
+    &:focus-visible {
+      outline: $b-2 solid var(--color-accent-primary);
+      outline-offset: $b-1;
+    }
+  }
+}
+
+.page-canvas-preview-identity {
+  min-inline-size: 0;
+  display: grid;
+  gap: 0.08rem;
+
+  strong,
+  span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  strong {
+    color: var(--color-foreground-primary);
+    font-size: 0.6875rem;
+    font-weight: 650;
+  }
+
+  span {
+    color: var(--color-foreground-secondary);
+    font-size: 0.625rem;
+  }
+}

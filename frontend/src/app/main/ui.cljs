@@ -319,6 +319,8 @@
        (let [params    (get params :query)
              component (rt/get-query-param params :component)
              story     (rt/get-query-param params :story)
+             source-file (rt/get-query-param params :source-file)
+             source-page (rt/get-query-param params :source-page)
              render-state (rt/get-query-param params :render-state)
              mode      (sayhi.web-materializer.contract/normalize-mode
                         (rt/get-query-param params :materializer))
@@ -332,12 +334,16 @@
                          :story-id story
                          :render-state render-state})]
          [:> web-preview-page*
-          {:component-id component
+         {:component-id component
+           :file-id source-file
+           :page-id source-page
            :provider (if portable?
                        sayhi.web-materializer.contract/portable-provider
                        sayhi.web-materializer.contract/projection-provider)
            :artifact artifact
-           :href href}])
+           :href href
+           :runtime-mode cf/sayhi-web-runtime-mode
+           :runtime-uri cf/sayhi-web-runtime-uri}])
 
 
        :workspace-legacy

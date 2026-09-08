@@ -1,0 +1,9 @@
+**
+!frontend/
+!frontend/target/
+!frontend/target/dist/
+!frontend/target/dist/**
+!docker/
+!docker/images/
+!docker/images/files/
+!docker/images/files/config.js

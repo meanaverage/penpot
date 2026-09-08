@@ -9,6 +9,7 @@
    [app.common.geom.rect :as grc]
    [app.common.uuid :as uuid]
    [app.main.data.sayhi.artifact-motion-playback :as artifact-playback]
+   [app.main.data.sayhi.motion-host.document-preview :as document-preview]
    [app.main.data.sayhi.web-materializer :as materializer]
    [app.main.data.sayhi.web-materializer.contract :as contract]
    [app.main.data.sayhi.web-materializer.motion-runtime :as motion-runtime]
@@ -181,6 +182,56 @@
     (t/is (= 1 (:partCount plan)))
     (t/is (= (:selectors step) (get-in plan [:parts "selector"])))))
 
+(t/deftest artifact-motion-plan-binds-a-cycle-indicator-to-ordered-anatomy
+  (let [{:keys [objects web-object]} (fixture)
+        artifact (-> (:artifact
+                      (materialize
+                       {:mode contract/portable-provider
+                        :studio-uri "https://studio.example/"
+                        :objects objects
+                        :web-object web-object}))
+                     (assoc-in [:anatomy :parts "pagination-slot"]
+                               [{:shapeId "dot-left"
+                                 :selector ".dot-left"
+                                 :frame {:x 10 :y 0 :width 6 :height 6
+                                         :rotation 0 :opacity 1}}
+                                {:shapeId "dot-center"
+                                 :selector ".dot-center"
+                                 :frame {:x 30 :y 0 :width 6 :height 6
+                                         :rotation 0 :opacity 1}}
+                                {:shapeId "dot-right"
+                                 :selector ".dot-right"
+                                 :frame {:x 50 :y 0 :width 6 :height 6
+                                         :rotation 0 :opacity 1}}])
+                     (assoc-in [:anatomy :parts "pagination-active"]
+                               [{:shapeId "active-pill"
+                                 :selector ".active-pill"
+                                 :frame {:x 24 :y 0 :width 18 :height 6
+                                         :rotation 0 :opacity 1}}])
+                     (assoc-in [:motion :$extensions :io.sayhi.motion
+                                :programs 0 :responses 0 :steps 0]
+                               {:id "next-pagination"
+                                :driver "waapi"
+                                :targetPart "pagination"
+                                :operation {:type "cycle-indicator"
+                                            :groupId "verification-methods"
+                                            :slotPart "pagination-slot"
+                                            :activePart "pagination-active"}
+                                :at 0.1
+                                :duration 0.24
+                                :ease "linear"
+                                :stagger 0}))
+        plan      (motion-runtime/compile-plan artifact)
+        operation (get-in plan [:responses 0 :steps 0 :operation])]
+    (t/is (= "ready" (:status plan)))
+    (t/is (= "cycle-indicator" (:type operation)))
+    (t/is (= "verification-methods" (:groupId operation)))
+    (t/is (= -1 (:delta operation)))
+    (t/is (= 1 (:initialSlot operation)))
+    (t/is (= [10 30 50] (mapv :x (:slots operation))))
+    (t/is (= ["layout.cycle-indicator"]
+             (get-in plan [:responses 0 :steps 0 :requiredCapabilities])))))
+
 (t/deftest artifact-motion-plan-rejects-unrenderable-tracks-without-taking-v1-down
   (let [{:keys [objects web-object]} (fixture)
         artifact (-> (:artifact
@@ -274,6 +325,60 @@
     (t/is (pos? @pause-count*))
     ((:dispose controller))))
 
+(t/deftest document-preview-removes-previous-icons-from-the-real-controller
+  (let [{:keys [objects web-object]} (fixture)
+        artifact   (:artifact (materialize {:mode contract/portable-provider
+                                            :studio-uri "https://studio.example/"
+                                            :objects objects :web-object web-object}))
+        step       (get-in artifact [:motion :$extensions :io.sayhi.motion :programs 0 :responses 0 :steps 0])
+        responses  (mapv (fn [direction]
+                           {:id direction :direction direction
+                            :steps (mapv #(assoc step :id (str direction "-" %)) ["coverflow" "icons" "pagination"])})
+                         ["next" "previous"])
+        canonical  (-> (:motion artifact)
+                       (assoc-in [:$extensions :io.sayhi.motion :tokenRevision] "tokens.test")
+                       (assoc-in [:$extensions :io.sayhi.motion :programs 0 :responses] responses))
+        artifact   (assoc artifact :motion canonical)
+        proposed   (update-in canonical [:$extensions :io.sayhi.motion :programs 0 :responses 1 :steps]
+                              #(into [] (remove (fn [step] (= "previous-icons" (:id step))) %)))
+        identity   {:fileId "file.test" :pageId "page.test" :shapeId "shape.test"}
+        recipe     {:format document-preview/format-name :formatVersion "1.0"
+                    :identity identity :responseId "previous" :document proposed}
+        current    {:revision 0 :document canonical}
+        plan       (document-preview/prepare-plan artifact current identity recipe)
+        active*    (atom #{})
+        target     #js {:animate (fn [_ _]
+                                   (let [animation #js {:currentTime 0 :pause (fn [])}]
+                                     (aset animation "cancel" #(swap! active* disj animation))
+                                     (swap! active* conj animation)
+                                     animation))}
+        document   #js {:querySelectorAll (fn [_] #js [target])}
+        states*    (atom [])
+        original   (artifact-playback/create-runtime document (motion-runtime/compile-plan artifact))
+        staged     (document-preview/replace-controller! document original plan "previous" #(swap! states* conj %))]
+    (t/is (= ["previous-coverflow" "previous-pagination"] (mapv :id (get-in plan [:responses 1 :steps]))))
+    (t/is (= 3 (count (get-in plan [:responses 0 :steps]))))
+    (t/is (= 2 (count @active*)) "Original animations are disposed; only staged Previous tracks exist.")
+    (t/is (= ["previous"] (mapv :responseId @states*)) "No transient Next state changes selection.")
+    (doseq [command [{:action "play"} {:action "seek" :value 0.5}
+                     {:action "restart"} {:action "select-response" :value "previous"}
+                     {:action "simulate-event" :value {:detail {:direction "previous"}}}
+                     {:action "pause"}]]
+      (artifact-playback/dispatch-command! staged command)
+      (t/is (= 2 (count @active*)) "Replay/scrub/simulate cannot resurrect a deleted track."))
+    (let [restored-plan (document-preview/prepare-plan artifact current identity (assoc recipe :document nil))
+          restored      (document-preview/replace-controller! document staged restored-plan "previous" (fn [_]))]
+      (t/is (= 3 (count @active*)) "Cancel restores the original tracks without saving.")
+      ((:dispose restored))
+      (t/is (empty? @active*)))
+    (t/is (= canonical (:motion artifact)))
+    (t/is (thrown? js/Error (document-preview/prepare-plan artifact current (assoc identity :shapeId "other") recipe)))
+    (t/is (thrown? js/Error (document-preview/prepare-plan artifact current identity (assoc recipe :formatVersion "99"))))
+    (t/is (thrown? js/Error (document-preview/prepare-plan artifact current identity
+                                                           (assoc recipe :document (assoc proposed :tokens "changed")))))
+    (t/is (thrown? js/Error (document-preview/prepare-plan artifact current identity
+                                                           (assoc recipe :document (assoc-in proposed [:$extensions :io.sayhi.motion :programs 0 :responses 1 :steps 0 :duration] -1)))))))
+
 (t/deftest artifact-motion-cycle-moves-each-card-to-a-distinct-slot-and-repeats
   (let [captures*      (atom [])
         next-frame*    (atom nil)
@@ -357,6 +462,115 @@
                                           [id (select-keys (first frames)
                                                            [:translate :rotate :scale])])) second-run)]
         (t/is (= ends second-starts))))
+    ((:dispose controller))))
+
+(t/deftest artifact-motion-cycle-indicator-follows-repeated-next-and-previous-triggers
+  (let [captures*   (atom [])
+        next-frame* (atom nil)
+        frame-id*   (atom 0)
+        make-target (fn [id]
+                      #js {:animate
+                           (fn [keyframes options]
+                             (swap! captures*
+                                    conj
+                                    {:id id
+                                     :frames (js->clj keyframes
+                                                      :keywordize-keys true)
+                                     :options (js->clj options
+                                                       :keywordize-keys true)})
+                             #js {:currentTime 0
+                                  :pause (fn [])
+                                  :cancel (fn [])})})
+        targets     {".method-left" (make-target "left")
+                     ".method-center" (make-target "center")
+                     ".method-right" (make-target "right")
+                     ".active-pill" (make-target "indicator")}
+        document    #js {:querySelectorAll
+                         (fn [selector]
+                           (if-let [target (get targets selector)]
+                             #js [target]
+                             #js []))}
+        scope       #js {:requestAnimationFrame
+                         (fn [callback]
+                           (reset! next-frame* callback)
+                           (swap! frame-id* inc))
+                         :cancelAnimationFrame (fn [_frame-id])}
+        slots       [{:id 0 :x 0 :y 20 :width 120 :height 90
+                      :rotation 357.6 :opacity 0.6 :zIndex 1}
+                     {:id 1 :x 90 :y 0 :width 180 :height 150
+                      :rotation 0 :opacity 1 :zIndex 3}
+                     {:id 2 :x 240 :y 20 :width 120 :height 90
+                      :rotation 2.4 :opacity 0.6 :zIndex 1}]
+        cycle-operation
+        (fn [delta]
+          {:type "cycle"
+           :groupId "verification-methods"
+           :delta delta
+           :centerSlot 1
+           :slots slots
+           :items [{:selector ".method-left" :initialSlot 0}
+                   {:selector ".method-center" :initialSlot 1}
+                   {:selector ".method-right" :initialSlot 2}]})
+        indicator-operation
+        (fn [delta]
+          {:type "cycle-indicator"
+           :groupId "verification-methods"
+           :delta delta
+           :initialSlot 1
+           :sourceFrame {:x 24 :y 0 :width 18 :height 6}
+           :selector ".active-pill"
+           :slots [{:id 0 :x 10 :y 0 :width 6 :height 6}
+                   {:id 1 :x 30 :y 0 :width 6 :height 6}
+                   {:id 2 :x 50 :y 0 :width 6 :height 6}]})
+        response    (fn [id direction delta]
+                      {:id id
+                       :match {:direction direction}
+                       :steps
+                       [{:id (str id "-coverflow")
+                         :driver "waapi"
+                         :at 0
+                         :duration 0.42
+                         :ease "linear"
+                         :stagger 0
+                         :operation (cycle-operation delta)}
+                        {:id (str id "-pagination")
+                         :driver "waapi"
+                         :at 0
+                         :duration 0.24
+                         :ease "linear"
+                         :stagger 0
+                         :operation (indicator-operation delta)}]})
+        plan        {:responses [(response "next" "next" -1)
+                                 (response "previous" "previous" 1)]}
+        controller  (artifact-playback/create-runtime document plan {:scope scope})
+        finish!     (fn []
+                      (doseq [timestamp [0 100 200 300 400 500 600]]
+                        (when-let [callback @next-frame*]
+                          (reset! next-frame* nil)
+                          (callback timestamp))))
+        last-indicator-frames
+        (fn []
+          (->> @captures*
+               (filter #(= "indicator" (:id %)))
+               last
+               :frames))]
+    ((:trigger controller) {:detail {:direction "next"}})
+    (t/is (= ["0px 0px" "20px 0px"]
+             (mapv :translate (last-indicator-frames))))
+    (t/is (= "both"
+             (->> @captures*
+                  (filter #(= "indicator" (:id %)))
+                  last
+                  :options
+                  :fill)))
+    (finish!)
+    ((:trigger controller) {:detail {:direction "next"}})
+    (t/is (= ["20px 0px" "-20px 0px"]
+             (mapv :translate (last-indicator-frames))))
+    (finish!)
+    ((:trigger controller) {:detail {:direction "previous"}})
+    (t/is (= ["-20px 0px" "20px 0px"]
+             (mapv :translate (last-indicator-frames))))
     ((:dispose controller))))
 
 (t/deftest artifact-motion-cycle-transfers-active-slot-appearance

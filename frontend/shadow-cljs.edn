@@ -160,6 +160,14 @@
    {:test {:init-fn frontend-tests.runner/init
            :prepend-js ";if (typeof globalThis.navigator?.userAgent === 'undefined') { globalThis.navigator = {userAgent: ''}; };"}}}
 
+  :image-import-check
+  {:target :esm
+   :output-dir "target/image-import-check"
+   :runtime :custom
+   :js-options {:js-provider :import}
+   :modules {:harness {:exports {setup frontend-tests.integration.image-import/setup
+                                snapshot frontend-tests.integration.image-import/snapshot}}}}
+
   :bench
   {:target :node-script
    :output-to "target/bench.js"

@@ -164,11 +164,16 @@
 (def grid-help-uri        (obj/get global "penpotGridHelpURI" "https://help.penpot.app/user-guide/flexible-layouts/"))
 (def plugins-list-uri     (obj/get global "penpotPluginsListURI" "https://penpot.app/penpothub/plugins"))
 (def plugins-whitelist    (into #{} (obj/get global "penpotPluginsWhitelist" [])))
+(def sayhi-surface        (obj/get global "penpotSayHiSurface"))
 (def sayhi-studio-uri     (obj/get global "penpotSayHiStudioURI"))
+(def sayhi-studio-chrome-mode (obj/get global "penpotSayHiStudioChromeMode" "internal-v1"))
+(def sayhi-studio-chrome-uri (obj/get global "penpotSayHiStudioChromeURI"))
 (def sayhi-motion-studio-mode (obj/get global "penpotSayHiMotionStudioMode" "legacy"))
 (def sayhi-motion-studio-uri (obj/get global "penpotSayHiMotionStudioURI" sayhi-studio-uri))
 (def sayhi-motion-preview-surface (obj/get global "penpotSayHiMotionPreviewSurface" "canvas"))
 (def sayhi-web-materializer-mode (obj/get global "penpotSayHiWebMaterializerMode" "projection-v1"))
+(def sayhi-web-runtime-mode (obj/get global "penpotSayHiWebRuntimeMode" "legacy"))
+(def sayhi-web-runtime-uri (obj/get global "penpotSayHiWebRuntimeURI" sayhi-studio-uri))
 (def templates-uri        (obj/get global "penpotTemplatesURI" "https://penpot.github.io/penpot-files/"))
 (def upload-chunk-size    (obj/get global "penpotUploadChunkSize" (* 1024 1024 25))) ;; 25 MiB
 

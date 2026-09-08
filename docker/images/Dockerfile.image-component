@@ -1,0 +1,20 @@
+FROM sayhi/penpot-frontend:real-web-preview-87-geist-kallisto-candidate-v6 AS retained-preview
+FROM retained-preview
+ARG VERSION_TAG
+ARG IMAGE_PLUGIN_SHA256
+USER root
+COPY --chown=1001:1001 frontend/target/dist/ /var/www/app/
+COPY --from=retained-preview --chown=1001:1001 /var/www/app/plugins/ /var/www/app/plugins/
+COPY --chown=1001:1001 docker/images/files/config.js /var/www/app/js/config.js
+RUN test -n "$VERSION_TAG" && \
+    test "$VERSION_TAG" != develop && \
+    grep -Fq "globalThis.penpotVersionTag = \"$VERSION_TAG\";" /var/www/app/index.html && \
+    grep -Fq "$VERSION_TAG" /var/www/app/js/main.js && \
+    test -s /var/www/app/fonts/geist-source-variable-1.8.0/Geist-wght.ttf && \
+    test -s /var/www/app/fonts/sayhi-kallisto-medium/kallisto-medium.otf && \
+    test -n "$IMAGE_PLUGIN_SHA256" && \
+    echo "$IMAGE_PLUGIN_SHA256  /var/www/app/plugins/sayhi-image-component/image-plugin.js" | sha256sum -c -
+LABEL io.sayhi.penpot.frontend.version-tag="$VERSION_TAG" \
+      io.sayhi.penpot.parent-image="sha256:87551f5876cf9de1e1c4df6928e629a674f36e2cac32a0fe7463e44320f9cbc3" \
+      io.sayhi.penpot.image-component-plugin="$IMAGE_PLUGIN_SHA256"
+USER penpot:penpot

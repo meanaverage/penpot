@@ -1,0 +1,8 @@
+**
+!frontend/
+!frontend/target/
+!frontend/target/dist/
+!frontend/target/dist/plugins/
+!frontend/target/dist/plugins/sayhi-image-component/
+!frontend/target/dist/plugins/sayhi-image-component/image-plugin.js
+!frontend/target/dist/plugins/sayhi-image-component/artifact.json

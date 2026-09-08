@@ -51,6 +51,7 @@
    [app.main.data.workspace.variants :as dwv]
    [app.main.repo :as rp]
    [app.main.store :as st]
+   [app.plugins.export-uri.v2 :as export-uri-v2]
    [app.plugins.exports :as exports]
    [app.plugins.fills :as fills]
    [app.plugins.flex :as flex]
@@ -74,6 +75,12 @@
 (declare shape-proxy?)
 ;; This is injected from plugin/librraies
 (def variant-proxy nil)
+
+(defn- resolve-export-download-uri
+  [uri]
+  (if (some? cf/sayhi-surface)
+    (export-uri-v2/resolve-download-uri uri (.-href js/location))
+    uri))
 
 (defn interaction-proxy? [p]
   (obj/type-of? p "InteractionProxy"))
@@ -1569,7 +1576,7 @@
                               (rp/cmd! :export payload))
                              (rx/mapcat (fn [{:keys [uri]}]
                                           (->> (http/send! {:method :get
-                                                            :uri uri
+                                                            :uri (resolve-export-download-uri uri)
                                                             :response-type :blob
                                                             :omit-default-headers true})
                                                (rx/map :body))))

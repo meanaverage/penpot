@@ -1,0 +1,26 @@
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+.studio-chrome-host {
+  position: fixed;
+  inset-inline-start: 50%;
+
+  // The hosted surface reserves its own transparent paint gutter. Keep an
+  // additional host-side clearance so that the iframe's transparent pixels
+  // never become a pointer-event layer over Penpot's palette.
+  inset-block-end: calc(1rem + var(--sayhi-canvas-bottom-inset, 0px));
+  z-index: calc(var(--z-index-panels) + 1);
+  inline-size: min(var(--sayhi-studio-chrome-width, 47rem), 100vw);
+  min-block-size: 5rem;
+  border: 0;
+  background: transparent;
+  transform: translateX(-50%);
+  transition:
+    block-size 120ms ease,
+    inset-block-end 180ms ease;
+}
+
+.studio-chrome-host[data-studio-app="pages"] {
+  inline-size: min(86rem, calc(100vw - 2rem));
+}

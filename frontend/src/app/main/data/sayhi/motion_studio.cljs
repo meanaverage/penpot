@@ -9,14 +9,15 @@
    [app.config :as cf]
    [app.main.data.changes :as dch]
    [app.main.data.helpers :as dsh]
+   [app.main.data.sayhi.motion-host.v1 :as motion-host-v1]
    [app.main.data.sayhi.web-preview :as web-preview]
    [app.main.data.workspace.undo :as dwu]
    [app.util.json :as json]
    [beicon.v2.core :as rx]
    [potok.v2.core :as ptk]))
 
-(def schema-name "io.sayhi.penpot.motion-host")
-(def schema-version "1.0")
+(def schema-name motion-host-v1/schema-name)
+(def schema-version motion-host-v1/schema-version)
 (def canvas-preview-root-id "sayhi-motion-canvas-preview-root")
 (def ^:private shared-namespace
   (keyword "shared" "io.sayhi.studio"))
@@ -311,7 +312,7 @@
   [objects selected preview-enabled? materialization]
   (cond-> base-host-capabilities
     (some? (motion-document objects selected))
-    (into (cond-> ["motion.read" "motion.write" "history.transaction"]
+    (into (cond-> ["motion.read" "motion.write"]
             preview-enabled? (into ["preview.control" "anatomy.highlight"])))
 
     (some? materialization)

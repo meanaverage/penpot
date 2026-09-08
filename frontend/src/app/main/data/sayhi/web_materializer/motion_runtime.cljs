@@ -161,6 +161,36 @@
           :inactive {:opacity 0}})))
    active-parts))
 
+(defn- geometry-entry?
+  [{:keys [selector frame]}]
+  (and (string? selector)
+       (map? frame)
+       (every? finite-number?
+               [(:x frame) (:y frame)
+                (:width frame) (:height frame)
+                (:rotation frame) (:opacity frame)])
+       (pos? (:width frame))
+       (pos? (:height frame))))
+
+(defn- ordered-geometry-entries
+  [entries]
+  (->> entries
+       (filter geometry-entry?)
+       (sort-by (juxt #(get-in % [:frame :x])
+                      #(get-in % [:frame :y])))
+       vec))
+
+(defn- response-delta
+  [response declared]
+  (or (:delta declared)
+      (case (or (:direction declared)
+                (get-in response [:match :direction])
+                (:direction response)
+                (:id response))
+        "next" -1
+        "previous" 1
+        nil)))
+
 (defn- cycle-request
   [artifact response step]
   (let [declared       (:operation step)
@@ -181,20 +211,8 @@
                                (filter string?)
                                distinct
                                vec)
-            valid-entry?  (fn [{:keys [selector frame]}]
-                            (and (string? selector)
-                                 (map? frame)
-                                 (every? finite-number?
-                                         [(:x frame) (:y frame)
-                                          (:width frame) (:height frame)
-                                          (:rotation frame) (:opacity frame)])
-                                 (pos? (:width frame))
-                                 (pos? (:height frame))))
-            usable        (filterv valid-entry? entries)
-            ordered       (->> usable
-                               (sort-by (juxt #(get-in % [:frame :x])
-                                              #(get-in % [:frame :y])))
-                               vec)
+            usable        (filterv geometry-entry? entries)
+            ordered       (ordered-geometry-entries usable)
             slot-by-shape (into {}
                                 (map-indexed
                                  (fn [index entry]
@@ -208,15 +226,7 @@
                                               (get-in entry [:frame :height]))]))
                                  (apply max-key second)
                                  first))
-            direction     (or (:direction declared)
-                              (get-in response [:match :direction])
-                              (:direction response)
-                              (:id response))
-            delta         (or (:delta declared)
-                              (case direction
-                                "next" -1
-                                "previous" 1
-                                nil))
+            delta         (response-delta response declared)
             appearance-by-shape
             (into {}
                   (map (fn [entry]
@@ -277,6 +287,73 @@
                                (get appearance-by-shape (:shapeId entry)))))
                     usable)})}))))
 
+(defn- frame-distance
+  [left right]
+  (let [left-x  (+ (:x left) (/ (:width left) 2))
+        left-y  (+ (:y left) (/ (:height left) 2))
+        right-x (+ (:x right) (/ (:width right) 2))
+        right-y (+ (:y right) (/ (:height right) 2))]
+    (+ (js/Math.pow (- left-x right-x) 2)
+       (js/Math.pow (- left-y right-y) 2))))
+
+(defn- cycle-indicator-request
+  [artifact response step]
+  (let [declared (:operation step)]
+    (when (= "cycle-indicator" (:type declared))
+      (let [group-id       (:groupId declared)
+            slot-part      (:slotPart declared)
+            active-part    (:activePart declared)
+            slots          (ordered-geometry-entries
+                            (get-in artifact [:anatomy :parts slot-part]))
+            active-targets (filterv geometry-entry?
+                                    (get-in artifact [:anatomy :parts active-part]))
+            active-target  (first active-targets)
+            delta          (response-delta response declared)
+            initial-slot   (when (and active-target (seq slots))
+                             (->> slots
+                                  (map-indexed
+                                   (fn [index entry]
+                                     [index (frame-distance (:frame active-target)
+                                                            (:frame entry))]))
+                                  (apply min-key second)
+                                  first))
+            issues         (cond-> []
+                             (or (not (string? group-id)) (str/blank? group-id))
+                             (conj (issue "motion_cycle_indicator_group_invalid"
+                                          "A cycle indicator must reference a cycle group."
+                                          (:id step)))
+
+                             (< (count slots) 2)
+                             (conj (issue "motion_cycle_indicator_slots_missing"
+                                          "A cycle indicator needs at least two ordered slot targets."
+                                          (:id step)))
+
+                             (not= 1 (count active-targets))
+                             (conj (issue "motion_cycle_indicator_active_target_invalid"
+                                          "A cycle indicator needs exactly one active marker target."
+                                          (:id step)))
+
+                             (not (and (number? delta)
+                                       (js/Number.isInteger delta)
+                                       (not (zero? delta))))
+                             (conj (issue "motion_cycle_indicator_direction_invalid"
+                                          "A cycle indicator needs a next/previous direction or a non-zero integer delta."
+                                          (:id step))))]
+        {:targetPart active-part
+         :issues issues
+         :operation
+         (when (empty? issues)
+           {:type "cycle-indicator"
+            :groupId group-id
+            :delta delta
+            :initialSlot initial-slot
+            :sourceFrame (:frame active-target)
+            :selector (:selector active-target)
+            :slots (mapv (fn [index entry]
+                           (assoc (:frame entry) :id index))
+                         (range)
+                         slots)})}))))
+
 (defn- motion-parts
   [artifact]
   (into {}
@@ -329,10 +406,13 @@
         driver    (or (:driver step)
                       (get-in step [:execution :driver])
                       "waapi")
-        cycle     (cycle-request artifact response step)
-        target    (or (:targetPart cycle) (:targetPart step))
-        selectors (if-let [operation (:operation cycle)]
-                    (mapv :selector (:items operation))
+        operation-request (or (cycle-request artifact response step)
+                              (cycle-indicator-request artifact response step))
+        target    (or (:targetPart operation-request) (:targetPart step))
+        operation (:operation operation-request)
+        selectors (case (:type operation)
+                    "cycle" (mapv :selector (:items operation))
+                    "cycle-indicator" [(:selector operation)]
                     (target-selectors artifact target))
         at        (duration-seconds token-document (or (:at step) 0))
         duration  (duration-seconds token-document (:duration step))
@@ -352,10 +432,12 @@
                                     vec)
         invalid-values (invalid-property-values from to)
         capabilities (cond-> (required-capabilities properties)
-                       (:operation cycle) (conj "layout.cycle")
-                       (seq (get-in cycle [:operation :items 0 :appearanceTargets]))
+                       (= "cycle" (:type operation)) (conj "layout.cycle")
+                       (= "cycle-indicator" (:type operation))
+                       (conj "layout.cycle-indicator")
+                       (seq (get-in operation [:items 0 :appearanceTargets]))
                        (conj "style.slot-appearance"))
-        problems  (cond-> (vec (:issues cycle))
+        problems  (cond-> (vec (:issues operation-request))
                     (or (not (string? track-id)) (str/blank? track-id))
                     (conj (issue "motion_track_id_invalid"
                                  "A motion track needs a stable identifier."))
@@ -375,7 +457,7 @@
                                  "The artifact has no shape selector for this motion part."
                                  track-id))
 
-                    (and (nil? (:operation cycle))
+                    (and (nil? operation)
                          (or (not (map? from)) (empty? from)
                              (not (map? to)) (empty? to)))
                     (conj (issue "motion_track_values_missing"
@@ -417,7 +499,7 @@
               :requiredCapabilities capabilities
               :targetPart target
               :timelineKind (or (:timelineKind step) "timed")
-              :operation (:operation cycle)
+              :operation operation
               :at at
               :duration duration
               :ease ease

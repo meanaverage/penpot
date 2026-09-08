@@ -1,0 +1,320 @@
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+@use "../ds/_borders.scss" as *;
+
+.studio-canvas-prompt {
+  position: fixed;
+  inset-inline-start: 50%;
+  inset-block-end: calc(1rem + var(--sayhi-canvas-bottom-inset, 0px));
+  z-index: calc(var(--z-index-panels) + 1);
+  inline-size: min(44rem, calc(100vw - 2rem));
+  block-size: 3rem;
+  min-block-size: 3rem;
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: 2.25rem minmax(0, 1fr) 2.25rem 1.1rem;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.6rem 0.25rem 0.45rem;
+  border: $b-1 solid rgb(32 34 31 / 0.17);
+  border-radius: 999px;
+  background: var(--color-background-primary);
+  box-shadow:
+    0 0.125rem 0.3125rem rgb(21 25 20 / 0.1),
+    0 0.75rem 1.875rem rgb(21 25 20 / 0.13);
+  transform: translateX(-50%);
+  transition: inset-block-end 180ms ease;
+
+  &:focus-within {
+    border-color: color-mix(in srgb, var(--color-accent-primary) 42%, rgb(32 34 31 / 0.17));
+    box-shadow:
+      0 0.125rem 0.3125rem rgb(21 25 20 / 0.09),
+      0 0.875rem 2.125rem rgb(21 25 20 / 0.15),
+      0 0 0 0.1875rem color-mix(in srgb, var(--color-accent-primary) 10%, transparent);
+  }
+
+  input {
+    appearance: none;
+    min-inline-size: 0;
+    block-size: 2.25rem;
+    align-self: center;
+    margin: 0;
+    padding: 0 0.25rem;
+    border: 0;
+    outline: 0;
+    color: var(--color-foreground-primary);
+    background: transparent;
+    font:
+      500 0.875rem/2.25rem "Instrument Sans",
+      sans-serif;
+    letter-spacing: -0.005em;
+
+    &::placeholder {
+      color: var(--color-foreground-secondary);
+    }
+
+    &:disabled {
+      cursor: not-allowed;
+    }
+  }
+
+  button {
+    inline-size: 2.25rem;
+    block-size: 2.25rem;
+    display: grid;
+    place-items: center;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    color: var(--color-foreground-secondary);
+    background: transparent;
+    cursor: pointer;
+
+    &:hover:not(:disabled),
+    &[aria-pressed="true"] {
+      color: var(--color-foreground-primary);
+      background: var(--button-tertiary-background-color-hover);
+    }
+
+    &:focus-visible {
+      outline: $b-2 solid var(--color-accent-primary);
+      outline-offset: $b-1;
+    }
+
+    &:disabled {
+      cursor: default;
+      opacity: 0.35;
+    }
+
+    svg {
+      inline-size: 1.15rem;
+      block-size: 1.15rem;
+      fill: none;
+      stroke: currentcolor;
+      stroke-width: 1.7;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+  }
+}
+
+.studio-canvas-app-toggle {
+  color: var(--color-accent-primary) !important;
+  background: color-mix(in srgb, var(--color-accent-primary) 9%, transparent) !important;
+
+  &[aria-expanded="true"] {
+    color: #fff !important;
+    background: var(--color-accent-primary) !important;
+  }
+}
+
+.studio-canvas-submit:not(:disabled) {
+  color: #fff !important;
+  background: var(--color-accent-primary) !important;
+}
+
+.studio-canvas-launcher {
+  position: relative;
+}
+
+.studio-canvas-launcher-menu {
+  position: absolute;
+  inset-inline-start: 0;
+  inset-block-end: calc(100% + 0.8rem);
+  z-index: calc(var(--z-index-panels) + 3);
+  inline-size: 13.5rem;
+  display: grid;
+  gap: 0.2rem;
+  padding: 0.35rem;
+  border: $b-1 solid var(--panel-border-color);
+  border-radius: 0.8rem;
+  background: var(--color-background-primary);
+  box-shadow: 0 0.75rem 2rem rgb(0 0 0 / 0.2);
+
+  > button,
+  > a {
+    inline-size: 100%;
+    block-size: auto;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 0.65rem;
+    padding: 0.65rem 0.7rem;
+    border: 0;
+    border-radius: 0.55rem;
+    color: var(--color-foreground-primary);
+    background: transparent;
+    font-size: 0.75rem;
+    text-decoration: none;
+    text-align: start;
+    cursor: pointer;
+
+    &:disabled {
+      opacity: 0.42;
+    }
+
+    &:hover:not(:disabled),
+    &[aria-current="page"] {
+      background: var(--button-tertiary-background-color-hover);
+    }
+
+    &:focus-visible {
+      outline: $b-2 solid var(--color-accent-primary);
+      outline-offset: $b-1;
+    }
+
+    > span {
+      min-inline-size: 0;
+      display: grid;
+      gap: 0.08rem;
+    }
+
+    strong,
+    small {
+      display: block;
+    }
+
+    strong {
+      color: var(--color-foreground-primary);
+      font-size: 0.75rem;
+      font-weight: 650;
+      line-height: 1.25;
+    }
+
+    small {
+      color: var(--color-foreground-secondary);
+      font-size: 0.625rem;
+      line-height: 1.25;
+    }
+
+    svg {
+      flex: 0 0 auto;
+    }
+  }
+
+  > hr {
+    inline-size: calc(100% - 0.7rem);
+    block-size: $b-1;
+    margin: 0.25rem auto;
+    border: 0;
+    background: var(--panel-border-color);
+  }
+}
+
+.studio-canvas-launcher-heading {
+  padding: 0.35rem 0.7rem 0.15rem;
+  color: var(--color-foreground-secondary);
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.studio-canvas-agent-state {
+  display: grid;
+  place-items: center;
+
+  i {
+    inline-size: 0.48rem;
+    block-size: 0.48rem;
+    border-radius: 50%;
+    background: var(--color-foreground-secondary);
+  }
+}
+
+.studio-canvas-prompt[data-agent-status="ready"] .studio-canvas-agent-state i {
+  background: #2f8f68;
+  box-shadow: 0 0 0 0.22rem color-mix(in srgb, #2f8f68 14%, transparent);
+}
+
+.studio-canvas-prompt[data-agent-status="busy"] .studio-canvas-agent-state i,
+.studio-canvas-prompt[data-agent-status="checking"] .studio-canvas-agent-state i {
+  background: var(--color-accent-primary);
+  animation: studio-canvas-agent-pulse 0.9s ease-in-out infinite alternate;
+}
+
+.studio-canvas-reply {
+  position: fixed;
+  inset-inline-start: 50%;
+  inset-block-end: calc(4.75rem + var(--sayhi-canvas-bottom-inset, 0px));
+  z-index: calc(var(--z-index-panels) + 2);
+  inline-size: min(36rem, calc(100vw - 2rem));
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.85rem 0.9rem 0.85rem 1rem;
+  border: $b-1 solid var(--panel-border-color);
+  border-radius: 0.9rem;
+  color: var(--color-foreground-primary);
+  background: var(--color-background-primary);
+  box-shadow: 0 0.8rem 2.5rem rgb(0 0 0 / 0.2);
+  transform: translateX(-50%);
+  transition: inset-block-end 180ms ease;
+
+  span {
+    min-inline-size: 0;
+    flex: 1;
+  }
+
+  small,
+  strong,
+  p {
+    display: block;
+  }
+
+  small {
+    color: var(--color-accent-primary);
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  strong {
+    margin-block-start: 0.18rem;
+    font-size: 0.82rem;
+  }
+
+  p {
+    margin: 0.35rem 0 0;
+    color: var(--color-foreground-secondary);
+    font-size: 0.75rem;
+    line-height: 1.35;
+  }
+
+  > button {
+    inline-size: 1.8rem;
+    block-size: 1.8rem;
+    border: 0;
+    border-radius: 0.45rem;
+    color: var(--color-foreground-secondary);
+    background: transparent;
+    cursor: pointer;
+  }
+
+  &.error small {
+    color: #b34f5b;
+  }
+}
+
+@keyframes studio-canvas-agent-pulse {
+  to {
+    opacity: 0.35;
+    transform: scale(0.72);
+  }
+}
+
+@media (width <= 48rem) {
+  .studio-canvas-prompt {
+    inset-block-end: calc(0.5rem + var(--sayhi-canvas-bottom-inset, 0px));
+    inline-size: calc(100vw - 1rem);
+  }
+
+  .studio-canvas-reply {
+    inset-block-end: calc(4.35rem + var(--sayhi-canvas-bottom-inset, 0px));
+    inline-size: calc(100vw - 1rem);
+  }
+}

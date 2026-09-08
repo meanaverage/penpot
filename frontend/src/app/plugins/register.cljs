@@ -40,6 +40,20 @@
 ;; Stores the installed plugins information
 (defonce ^:private registry (atom {}))
 
+;; First-party, request-scoped plugins need no persistent profile installation.
+;; This is an internal CLJS API, not exposed to plugin compartments.
+(defonce ^:private session-permissions (atom {}))
+
+(defn register-session-plugin!
+  [plugin-id permissions]
+  (assert (and (string? plugin-id)
+               (not (contains? (:data @registry) plugin-id))
+               (not (contains? @session-permissions plugin-id))))
+  (assert (every? #{"content:read" "content:write" "library:read" "library:write"}
+                  permissions))
+  (swap! session-permissions assoc plugin-id permissions)
+  #(swap! session-permissions dissoc plugin-id))
+
 (defn plugins-list
   "Retrieves the plugin data as an ordered list of plugin elements"
   []
@@ -152,6 +166,7 @@
   [plugin-id permission]
   (or (= plugin-id "00000000-0000-0000-0000-000000000000")
       (= plugin-id mcp-plugin-id)
+      (contains? (get @session-permissions plugin-id) permission)
       (let [{:keys [permissions]} (dm/get-in @registry [:data plugin-id])]
         (contains? permissions permission))))
 

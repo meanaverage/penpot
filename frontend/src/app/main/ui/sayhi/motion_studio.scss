@@ -46,9 +46,9 @@
   inset-block-end: 1rem;
   z-index: var(--z-index-panels);
   min-inline-size: 34rem;
-  block-size: min(22rem, 42vh);
+  block-size: var(--sayhi-motion-dock-height, min(22rem, 42vh));
   display: grid;
-  grid-template-rows: 2.75rem 1fr;
+  grid-template-rows: 2.75rem minmax(0, 1fr);
   overflow: hidden;
   border: $b-1 solid var(--panel-border-color);
   border-radius: 0.75rem;
@@ -60,6 +60,36 @@
     inline-size: min(28rem, calc(100vw - 2rem));
     min-inline-size: 0;
     block-size: 2.75rem;
+  }
+
+  &.studio-canvas {
+    inset-block-end: calc(5rem + var(--sayhi-canvas-bottom-inset, 0px));
+  }
+}
+
+.motion-studio-dock-resize {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-start: calc(50% - 2.5rem);
+  z-index: 2;
+  inline-size: 5rem;
+  block-size: 0.75rem;
+  cursor: ns-resize;
+  touch-action: none;
+
+  &::after {
+    position: absolute;
+    inset-block-start: 0.25rem;
+    inset-inline: 1rem;
+    block-size: 0.1875rem;
+    border-radius: 1rem;
+    background: var(--color-foreground-secondary);
+    content: "";
+  }
+
+  &:focus-visible {
+    outline: $b-2 solid var(--color-accent-primary);
+    outline-offset: -$b-2;
   }
 }
 
@@ -135,10 +165,33 @@
 }
 
 .motion-studio-dock-frame {
+  min-block-size: 0;
   inline-size: 100%;
   block-size: 100%;
   border: 0;
   background: var(--color-background-primary);
+}
+
+// The private timeline keeps its transport/expand control mounted. The native
+// dock reclaims the surrounding space and contributes only its Close button.
+.motion-studio-dock[data-content-collapsed="true"] {
+  grid-template-rows: minmax(0, 1fr);
+
+  .motion-studio-dock-resize,
+  .motion-studio-dock-title,
+  .motion-studio-dock-actions button[aria-expanded] {
+    display: none;
+  }
+
+  .motion-studio-dock-header {
+    position: absolute;
+    inset-block-start: var(--sp-m);
+    inset-inline-end: var(--sp-m);
+    z-index: 3;
+    padding: 0;
+    border: 0;
+    background: transparent;
+  }
 }
 
 .motion-studio-preview {
@@ -155,6 +208,10 @@
   &.collapsed {
     display: none;
   }
+
+  &.studio-canvas {
+    inset-block-end: calc(min(22rem, 42vh) + 2rem + var(--sayhi-canvas-bottom-inset, 0px));
+  }
 }
 
 .motion-studio-preview-frame {
@@ -169,11 +226,19 @@
     inset-inline: 0.5rem;
     inset-block-end: 0.5rem;
     min-inline-size: 0;
-    block-size: min(25rem, 56vh);
+    block-size: var(--sayhi-motion-dock-height, min(25rem, 56vh));
+
+    &.studio-canvas {
+      inset-block-end: calc(4.5rem + var(--sayhi-canvas-bottom-inset, 0px));
+    }
   }
 
   .motion-studio-preview {
     inset-block: 4rem calc(min(25rem, 56vh) + 1.5rem);
     inset-inline: 1rem;
+
+    &.studio-canvas {
+      inset-block-end: calc(min(25rem, 56vh) + 1.5rem + var(--sayhi-canvas-bottom-inset, 0px));
+    }
   }
 }

@@ -8,10 +8,12 @@
   (:require-macros [app.main.style :as stl])
   (:require
    [app.common.data.macros :as dm]
+   [app.config :as cf]
    [app.main.data.common :as dcm]
    [app.main.data.helpers :as dsh]
    [app.main.data.persistence :as dps]
    [app.main.data.plugins :as dpl]
+   [app.main.data.sayhi.studio-canvas :as sayhi.studio-canvas]
    [app.main.data.workspace :as dw]
    [app.main.features :as features]
    [app.main.refs :as refs]
@@ -23,6 +25,9 @@
    [app.main.ui.hooks.resize :refer [use-resize-observer]]
    [app.main.ui.modal :refer [modal-container*]]
    [app.main.ui.sayhi.motion-studio :as sayhi.motion-studio]
+   [app.main.ui.sayhi.page-canvas-preview :as sayhi.page-canvas-preview]
+   [app.main.ui.sayhi.studio-canvas :as sayhi.studio-canvas-ui]
+   [app.main.ui.sayhi.studio-chrome :as sayhi.studio-chrome-ui]
    [app.main.ui.workspace.colorpicker]
    [app.main.ui.workspace.context-menu :refer [context-menu*]]
    [app.main.ui.workspace.coordinates :as coordinates]
@@ -52,7 +57,7 @@
 
 (mf/defc workspace-content*
   {::mf/private true}
-  [{:keys [file layout page wglobal]}]
+  [{:keys [file layout page wglobal on-palette-inset-change]}]
 
   (let [palete-size (mf/use-state nil)
         selected    (mf/deref refs/selected-shapes)
@@ -86,6 +91,12 @@
            (reset! palete-size size)))
 
         node-ref (use-resize-observer on-resize)]
+
+    (mf/with-effect [layout @palete-size on-palette-inset-change]
+      (when on-palette-inset-change
+        (on-palette-inset-change
+         (sayhi.studio-canvas/canvas-bottom-inset layout @palete-size))))
+
     [:*
      (when (not ^boolean hide-ui?)
        [:> palette* {:layout layout
@@ -170,7 +181,7 @@
 
 (mf/defc workspace-inner*
   {::mf/private true}
-  [{:keys [page-id file-id file layout wglobal]}]
+  [{:keys [page-id file-id file layout wglobal on-palette-inset-change]}]
   (let [page-ref (mf/with-memo [file-id page-id]
                    (make-page-ref file-id page-id))
         page     (mf/deref page-ref)]
@@ -189,7 +200,8 @@
       [:> workspace-content* {:file file
                               :page page
                               :wglobal wglobal
-                              :layout layout}]
+                              :layout layout
+                              :on-palette-inset-change on-palette-inset-change}]
       [:> workspace-loader*])))
 
 (mf/defc workspace*
@@ -198,6 +210,21 @@
 
   (let [layout           (mf/deref refs/workspace-layout)
         wglobal          (mf/deref refs/workspace-global)
+        studio-canvas?   (sayhi.studio-canvas/studio-canvas-mode? cf/sayhi-surface)
+        studio-controls-visible? (mf/use-state false)
+        palette-inset*   (mf/use-state 0)
+        toggle-studio-controls
+        (mf/use-fn
+         (fn []
+           (swap! studio-controls-visible? not)))
+        effective-layout (if studio-canvas?
+                           ((if @studio-controls-visible? disj conj) (or layout #{}) :hide-ui)
+                           layout)
+        on-palette-inset-change
+        (mf/use-fn
+         (fn [size]
+           (when (not= size @palette-inset*)
+             (reset! palette-inset* size))))
 
         team-ref         (mf/with-memo [team-id]
                            (make-team-ref team-id))
@@ -222,6 +249,17 @@
         first-frame-rendered?  (mf/use-state false)
 
         background-color (:background-color wglobal)]
+
+    (mf/with-effect [studio-canvas?]
+      (when studio-canvas?
+        (let [on-keydown
+              (fn [event]
+                (when (sayhi.studio-canvas/studio-controls-shortcut? event)
+                  (.preventDefault event)
+                  (.stopImmediatePropagation event)
+                  (swap! studio-controls-visible? not)))]
+          (.addEventListener js/window "keydown" on-keydown true)
+          #(.removeEventListener js/window "keydown" on-keydown true))))
 
     (mf/with-effect []
       (st/emit! (dps/initialize-persistence)
@@ -262,10 +300,13 @@
        [:> (mf/provider ctx/design-tokens) {:value design-tokens?}
         [:> (mf/provider ctx/workspace-read-only?) {:value read-only?}
          [:> modal-container*]
-         [:section {:class (stl/css :workspace)
+         [:section {:class (stl/css-case :workspace true
+                                         :sayhi-studio-canvas-mode studio-canvas?)
                     :style {:background-color background-color
                             :touch-action "none"
-                            :position "relative"}}
+                            :position "relative"
+                            "--sayhi-canvas-bottom-inset"
+                            (dm/str (if studio-canvas? @palette-inset* 0) "px")}}
           [:> context-menu*]
           (when (and file-loaded? page-id)
             [:> workspace-inner*
@@ -273,8 +314,21 @@
               :file-id file-id
               :file file
               :wglobal wglobal
-              :layout layout}])
+              :layout effective-layout
+              :on-palette-inset-change on-palette-inset-change}])
+          (when (and studio-canvas? file-loaded? page-id)
+            [:> sayhi.page-canvas-preview/page-canvas-preview*
+             {:page-id page-id}])
           [:> sayhi.motion-studio/motion-studio-dock*]
+          (when studio-canvas?
+            (if (= "external-v1" cf/sayhi-studio-chrome-mode)
+              [:> sayhi.studio-chrome-ui/studio-chrome-host*
+               {:controls-visible @studio-controls-visible?
+                :canvas-bottom-inset @palette-inset*
+                :on-toggle-controls toggle-studio-controls}]
+              [:> sayhi.studio-canvas-ui/studio-canvas-prompt*
+               {:controls-visible @studio-controls-visible?
+                :on-toggle-controls toggle-studio-controls}]))
           (when (or (not (and file-loaded? page-id))
                     ;; in wasm renderer, extend the pixel loader until the first frame is rendered
                     ;; but do not apply it when switching pages

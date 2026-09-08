@@ -18,7 +18,11 @@
      (mf/deps page-id)
      (fn []
        (reset! container*
-               (.getElementById js/document motion-studio/canvas-preview-root-id))))
+               (.getElementById js/document motion-studio/canvas-preview-root-id))
+       ;; Effects may return a cleanup function, but a DOM node is not a
+       ;; closable resource.  `reset!` returns the value it stores, so make the
+       ;; no-cleanup result explicit when the active Penpot page changes.
+       js/undefined))
 
     (when (and container layout (not hidden))
       (mf/portal

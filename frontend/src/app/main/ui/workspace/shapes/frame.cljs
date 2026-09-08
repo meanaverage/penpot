@@ -6,7 +6,6 @@
 
 (ns app.main.ui.workspace.shapes.frame
   (:require
-   [app.common.data :as d]
    [app.common.data.macros :as dm]
    [app.common.geom.shapes.bounds :as gsb]
    [app.common.math :as mth]
@@ -18,6 +17,7 @@
    [app.main.ui.context :as ctx]
    [app.main.ui.shapes.frame :as frame]
    [app.main.ui.shapes.shape :refer [shape-container]]
+   [app.main.ui.thumbnail-recovery :as thumbnail-recovery]
    [app.main.ui.workspace.shapes.common :refer [check-shape-props]]
    [app.main.ui.workspace.shapes.debug :as wsd]
    [app.main.ui.workspace.shapes.frame.dynamic-modifiers :as fdm]
@@ -145,44 +145,56 @@
                              (refs/workspace-modifiers-by-frame-id frame-id))
             modifiers      (mf/deref modifiers-ref)
 
-            hidden?        (true? (:hidden shape))
-            content-visible? (or (not ^boolean thumbnail?) (not ^boolean thumbnail-uri))
-
-            tries-ref      (mf/use-ref 0)
             imposter-ref   (mf/use-ref nil)
-            imposter-loaded  (mf/use-state false)
-            task-ref       (mf/use-ref nil)
+            imposter-loaded (mf/use-state false)
+            failed-thumbnail-uri (mf/use-state nil)
+            repair-requested-ref (mf/use-ref false)
+
+            hidden?        (true? (:hidden shape))
+            image-visible? (thumbnail-recovery/cached-image-visible?
+                            thumbnail?
+                            thumbnail-uri
+                            @failed-thumbnail-uri)
+            content-visible? (thumbnail-recovery/native-content-visible?
+                              thumbnail?
+                              thumbnail-uri
+                              @failed-thumbnail-uri)
 
             on-load        (mf/use-fn (fn []
                                         ;; We need to check if this is the culprit of the thumbnail regeneration.
                                         ;; (check-thumbnail-size (mf/ref-val imposter-ref) bounds file-id page-id frame-id)
-                                        (mf/set-ref-val! tries-ref 0)
+                                        (mf/set-ref-val! repair-requested-ref false)
+                                        (reset! failed-thumbnail-uri nil)
                                         (reset! imposter-loaded true)))
             on-error       (mf/use-fn
                             (fn []
-                              (let [current-tries (mf/ref-val tries-ref)
-                                    new-tries     (mf/set-ref-val! tries-ref (inc current-tries))
-                                    delay-in-ms   (* (mth/pow 2 new-tries) 1000)
-                                    retry-fn      (fn []
-                                                    (let [imposter (mf/ref-val imposter-ref)]
-                                                      (when-not (nil? imposter)
-                                                        (dom/set-attribute! imposter "href" thumbnail-uri))))]
-                                (when (< new-tries 8)
-                                  (mf/set-ref-val! task-ref (tm/schedule delay-in-ms retry-fn))))))]
+                              ;; A stale frame thumbnail must never replace the real
+                              ;; editable object tree with Penpot's placeholder for
+                              ;; minutes. Reveal the native frame immediately, then
+                              ;; clear and regenerate the broken cache entry in the
+                              ;; background. This also makes old drafts self-heal
+                              ;; without requiring a plugin mutation or selection.
+                              (reset! failed-thumbnail-uri thumbnail-uri)
+                              (reset! imposter-loaded false)
+                              (when-not (mf/ref-val repair-requested-ref)
+                                (mf/set-ref-val! repair-requested-ref true)
+                                (st/emit!
+                                 (dwt/clear-thumbnail file-id page-id frame-id "frame")
+                                 (dwt/update-thumbnail file-id page-id frame-id "frame"
+                                                       "thumbnail-load-error")))))]
 
         ;; NOTE: we don't add deps because we want this to be executed
         ;; once on mount with only referenced the initial data
         (mf/with-effect []
-          (when-not (some? thumbnail-uri)
-            (tm/schedule-on-idle
-             #(st/emit! (dwt/update-thumbnail file-id page-id frame-id "frame" "root-frame"))))
-
-          #(when-let [task (mf/ref-val task-ref)]
-             (d/close! task)))
+          (let [task (when-not (some? thumbnail-uri)
+                       (tm/schedule-on-idle
+                        #(st/emit! (dwt/update-thumbnail file-id page-id frame-id "frame" "root-frame"))))]
+            #(thumbnail-recovery/dispose-scheduled-task! task)))
 
         (mf/with-effect [thumbnail-uri]
-          (when-let [task (mf/ref-val task-ref)]
-            (d/close! task)))
+          (mf/set-ref-val! repair-requested-ref false)
+          (reset! imposter-loaded false)
+          nil)
 
         (fdm/use-dynamic-modifiers objects (mf/ref-val content-ref) modifiers)
         [:& shape-container {:shape shape}
@@ -210,7 +222,7 @@
              :href thumbnail-uri
              :on-load on-load
              :on-error on-error
-             :style {:display (when-not (and ^boolean thumbnail? ^boolean thumbnail-uri) "none")}}]
+             :style {:display (when-not image-visible? "none")}}]
 
            ;; Render border around image when we are debugging
            ;; thumbnails.
@@ -231,4 +243,3 @@
 
          (when *assert*
            [:> wsd/shape-debug* {:shape shape}])]))))
-

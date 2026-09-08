@@ -10,6 +10,8 @@ is_falsy() {
   [[ "$value" == "false" || "$value" == "f" || "$value" == "0" ]]
 }
 
+source /runtime-config.sh
+
 
 #########################################
 ## Air Gapped config
@@ -26,21 +28,28 @@ fi
 
 update_flags() {
   if [ -n "$PENPOT_FLAGS" ]; then
-    echo "$(sed \
-      -e "s|^//var penpotFlags = .*;|var penpotFlags = \"$PENPOT_FLAGS\";|g" \
-      "$1")" > "$1"
+    upsert_javascript_string_config "$1" "penpotFlags" "$PENPOT_FLAGS"
   fi
 
   if [ -n "$PENPOT_PUBLIC_URI" ]; then
-      echo "var penpotPublicURI = \"$PENPOT_PUBLIC_URI\";" >> "$1";
+    upsert_javascript_string_config "$1" "penpotPublicURI" "$PENPOT_PUBLIC_URI"
   fi
 }
 
 update_oidc_name() {
   if [ -n "$PENPOT_OIDC_NAME" ]; then
-    echo "$(sed \
-      -e "s|^//var penpotOIDCName = .*;|var penpotOIDCName = \"$PENPOT_OIDC_NAME\";|g" \
-      "$1")" > "$1"
+    upsert_javascript_string_config "$1" "penpotOIDCName" "$PENPOT_OIDC_NAME"
+  fi
+}
+
+update_sayhi_surface() {
+  if [ -n "$PENPOT_SAYHI_SURFACE" ]; then
+    if [[ "$PENPOT_SAYHI_SURFACE" != "canvas" ]]; then
+      echo "PENPOT_SAYHI_SURFACE must be canvas" >&2
+      exit 1
+    fi
+
+    upsert_javascript_string_config "$1" "penpotSayHiSurface" "$PENPOT_SAYHI_SURFACE"
   fi
 }
 
@@ -56,9 +65,34 @@ update_sayhi_studio_uri() {
       exit 1
     fi
 
-    local escaped_uri="${PENPOT_SAYHI_STUDIO_URI//\\/\\\\}"
-    escaped_uri="${escaped_uri//\"/\\\"}"
-    printf 'var penpotSayHiStudioURI = "%s";\n' "$escaped_uri" >> "$1"
+    upsert_javascript_string_config "$1" "penpotSayHiStudioURI" "$PENPOT_SAYHI_STUDIO_URI"
+  fi
+}
+
+update_sayhi_studio_chrome_mode() {
+  if [ -n "$PENPOT_SAYHI_STUDIO_CHROME_MODE" ]; then
+    if [[ "$PENPOT_SAYHI_STUDIO_CHROME_MODE" != "internal-v1" && "$PENPOT_SAYHI_STUDIO_CHROME_MODE" != "external-v1" ]]; then
+      echo "PENPOT_SAYHI_STUDIO_CHROME_MODE must be internal-v1 or external-v1" >&2
+      exit 1
+    fi
+
+    upsert_javascript_string_config "$1" "penpotSayHiStudioChromeMode" "$PENPOT_SAYHI_STUDIO_CHROME_MODE"
+  fi
+}
+
+update_sayhi_studio_chrome_uri() {
+  if [ -n "$PENPOT_SAYHI_STUDIO_CHROME_URI" ]; then
+    if [[ "$PENPOT_SAYHI_STUDIO_CHROME_URI" != http://* && "$PENPOT_SAYHI_STUDIO_CHROME_URI" != https://* ]]; then
+      echo "PENPOT_SAYHI_STUDIO_CHROME_URI must be an HTTP(S) URL" >&2
+      exit 1
+    fi
+
+    if [[ "$PENPOT_SAYHI_STUDIO_CHROME_URI" == *$'\n'* || "$PENPOT_SAYHI_STUDIO_CHROME_URI" == *$'\r'* ]]; then
+      echo "PENPOT_SAYHI_STUDIO_CHROME_URI must not contain line breaks" >&2
+      exit 1
+    fi
+
+    upsert_javascript_string_config "$1" "penpotSayHiStudioChromeURI" "$PENPOT_SAYHI_STUDIO_CHROME_URI"
   fi
 }
 
@@ -69,7 +103,7 @@ update_sayhi_motion_studio_mode() {
       exit 1
     fi
 
-    printf 'var penpotSayHiMotionStudioMode = "%s";\n' "$PENPOT_SAYHI_MOTION_STUDIO_MODE" >> "$1"
+    upsert_javascript_string_config "$1" "penpotSayHiMotionStudioMode" "$PENPOT_SAYHI_MOTION_STUDIO_MODE"
   fi
 }
 
@@ -85,9 +119,7 @@ update_sayhi_motion_studio_uri() {
       exit 1
     fi
 
-    local escaped_uri="${PENPOT_SAYHI_MOTION_STUDIO_URI//\\/\\\\}"
-    escaped_uri="${escaped_uri//\"/\\\"}"
-    printf 'var penpotSayHiMotionStudioURI = "%s";\n' "$escaped_uri" >> "$1"
+    upsert_javascript_string_config "$1" "penpotSayHiMotionStudioURI" "$PENPOT_SAYHI_MOTION_STUDIO_URI"
   fi
 }
 
@@ -98,7 +130,7 @@ update_sayhi_motion_preview_surface() {
       exit 1
     fi
 
-    printf 'var penpotSayHiMotionPreviewSurface = "%s";\n' "$PENPOT_SAYHI_MOTION_PREVIEW_SURFACE" >> "$1"
+    upsert_javascript_string_config "$1" "penpotSayHiMotionPreviewSurface" "$PENPOT_SAYHI_MOTION_PREVIEW_SURFACE"
   fi
 }
 
@@ -109,17 +141,49 @@ update_sayhi_web_materializer_mode() {
       exit 1
     fi
 
-    printf 'var penpotSayHiWebMaterializerMode = "%s";\n' "$PENPOT_SAYHI_WEB_MATERIALIZER_MODE" >> "$1"
+    upsert_javascript_string_config "$1" "penpotSayHiWebMaterializerMode" "$PENPOT_SAYHI_WEB_MATERIALIZER_MODE"
+  fi
+}
+
+update_sayhi_web_runtime_mode() {
+  if [ -n "$PENPOT_SAYHI_WEB_RUNTIME_MODE" ]; then
+    if [[ "$PENPOT_SAYHI_WEB_RUNTIME_MODE" != "legacy" && "$PENPOT_SAYHI_WEB_RUNTIME_MODE" != "standalone-v1" && "$PENPOT_SAYHI_WEB_RUNTIME_MODE" != "shadow" ]]; then
+      echo "PENPOT_SAYHI_WEB_RUNTIME_MODE must be legacy, standalone-v1, or shadow" >&2
+      exit 1
+    fi
+
+    upsert_javascript_string_config "$1" "penpotSayHiWebRuntimeMode" "$PENPOT_SAYHI_WEB_RUNTIME_MODE"
+  fi
+}
+
+update_sayhi_web_runtime_uri() {
+  if [ -n "$PENPOT_SAYHI_WEB_RUNTIME_URI" ]; then
+    if [[ "$PENPOT_SAYHI_WEB_RUNTIME_URI" != http://* && "$PENPOT_SAYHI_WEB_RUNTIME_URI" != https://* ]]; then
+      echo "PENPOT_SAYHI_WEB_RUNTIME_URI must be an HTTP(S) URL" >&2
+      exit 1
+    fi
+
+    if [[ "$PENPOT_SAYHI_WEB_RUNTIME_URI" == *$'\n'* || "$PENPOT_SAYHI_WEB_RUNTIME_URI" == *$'\r'* ]]; then
+      echo "PENPOT_SAYHI_WEB_RUNTIME_URI must not contain line breaks" >&2
+      exit 1
+    fi
+
+    upsert_javascript_string_config "$1" "penpotSayHiWebRuntimeURI" "$PENPOT_SAYHI_WEB_RUNTIME_URI"
   fi
 }
 
 update_flags /var/www/app/js/config.js
 update_oidc_name /var/www/app/js/config.js
+update_sayhi_surface /var/www/app/js/config.js
 update_sayhi_studio_uri /var/www/app/js/config.js
+update_sayhi_studio_chrome_mode /var/www/app/js/config.js
+update_sayhi_studio_chrome_uri /var/www/app/js/config.js
 update_sayhi_motion_studio_mode /var/www/app/js/config.js
 update_sayhi_motion_studio_uri /var/www/app/js/config.js
 update_sayhi_motion_preview_surface /var/www/app/js/config.js
 update_sayhi_web_materializer_mode /var/www/app/js/config.js
+update_sayhi_web_runtime_mode /var/www/app/js/config.js
+update_sayhi_web_runtime_uri /var/www/app/js/config.js
 
 #########################################
 ## Nginx Config
