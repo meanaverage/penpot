@@ -67,6 +67,60 @@
 (def ^:private sample-margin
   {:m1 10 :m2 20 :m3 30 :m4 40})
 
+;; --- Circle and rectangle rounding --------------------------------------
+
+(def ^:private corner-properties
+  [:border-start-start-radius :border-start-end-radius
+   :border-end-start-radius :border-end-end-radius])
+
+(deftest circle-and-oval-css-preserves-rounding
+  (doseq [[width height] [[50 50] [120 80] [80 120]]
+          radii [{} {:r1 4 :r2 8 :r3 12 :r4 16}]]
+    (testing (str "ellipse " width "x" height " with corner fields " radii)
+      (let [pid    (uuid/next)
+            cid    (uuid/next)
+            parent (frame pid)
+            c      (merge (child cid pid
+                                 :type :circle
+                                 :selrect (grc/make-rect 0 0 width height)
+                                 :points (pts 0 0 width height))
+                          radii)
+            out    (css/generate-style (objects parent c) [parent] [parent c])]
+        (doseq [property corner-properties]
+          (is (str/includes? out (str (name property) ": 50%;"))))
+        (is (str/includes? out (str "width: " width "px;")))
+        (is (str/includes? out (str "height: " height "px;")))))))
+
+(deftest rectangle-css-preserves-authored-corners
+  (doseq [radii [{} {:r1 0 :r2 0 :r3 0 :r4 0}
+                 {:r1 8 :r2 8 :r3 8 :r4 8}
+                 {:r1 4 :r2 0 :r3 12 :r4 16}]]
+    (testing (str "rectangle corner fields " radii)
+      (let [pid (uuid/next)
+            cid (uuid/next)
+            c   (merge (child cid pid) radii)
+            out (css/get-shape-css-selector (objects (frame pid) c) c)]
+        (doseq [[property field] (map vector corner-properties [:r1 :r2 :r3 :r4])]
+          (if (pos? (get radii field 0))
+            (is (str/includes? out (str (name property) ": " (get radii field) "px;")))
+            (is (not (str/includes? out (str (name property) ":"))))))
+        (is (not (str/includes? out "border-radius:")))
+        (is (not (str/includes? out ": 50%;")))))))
+
+(deftest wrapped-circle-rounding-stays-on-the-shape
+  (let [pid   (uuid/next)
+        cid   (uuid/next)
+        c     (child cid pid :type :circle :transform (gmt/rotate-matrix 30))
+        out   (css/get-shape-css-selector (objects (grid-frame pid cid) c) c)
+        rules (str/split out "}")
+        inner (first (filter #(str/includes? % "transform:") rules))
+        outer (first (filter #(str/includes? % "-wrapper {") rules))]
+    (is (some? inner))
+    (is (some? outer))
+    (doseq [property corner-properties]
+      (is (str/includes? inner (str (name property) ": 50%;"))))
+    (is (not (str/includes? outer "radius:")))))
+
 ;; --- Margins on layout children -----------------------------------------
 
 (deftest grid-child-margins-use-logical-longhand

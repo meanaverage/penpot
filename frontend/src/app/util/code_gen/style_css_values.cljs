@@ -230,25 +230,29 @@
     (every? some? [r1 r2 r3 r4])
     [r1 r2 r3 r4]))
 
+(defn- get-border-corner-radius
+  [shape radius]
+  ;; Full CSS export uses logical corners, not the border-radius shorthand.
+  ;; Percentage radii preserve both circles and non-square ellipses.
+  (cond
+    (cfh/circle-shape? shape) "50%"
+    (and radius (not= radius 0)) [radius]))
+
 (defn- get-border-start-start-radius
-  [{:keys [_ r1 _ _ _] :as shape}]
-  (when (and r1 (not= r1 0))
-    [r1]))
+  [{:keys [r1] :as shape}]
+  (get-border-corner-radius shape r1))
 
 (defn- get-border-start-end-radius
-  [{:keys [_ _ r2 _ _] :as shape}]
-  (when (and r2 (not= r2 0))
-    [r2]))
+  [{:keys [r2] :as shape}]
+  (get-border-corner-radius shape r2))
 
 (defn- get-border-end-start-radius
-  [{:keys [_ _ _ r3 _] :as shape}]
-  (when (and r3 (not= r3 0))
-    [r3]))
+  [{:keys [r3] :as shape}]
+  (get-border-corner-radius shape r3))
 
 (defn- get-border-end-end-radius
-  [{:keys [_ _ _ _ r4] :as shape}]
-  (when (and r4 (not= r4 0))
-    [r4]))
+  [{:keys [r4] :as shape}]
+  (get-border-corner-radius shape r4))
 
 (defn- get-border-style
   [stroke]

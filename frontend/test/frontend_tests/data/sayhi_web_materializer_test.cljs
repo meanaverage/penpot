@@ -150,6 +150,31 @@
     (t/is (= "ready" (get-in artifact [:motionRuntime :status])))
     (t/is (= 1 (get-in artifact [:motionRuntime :trackCount])))))
 
+(t/deftest portable-v2-preserves-ellipses-in-preview-documents
+  (doseq [[width height] [[80 80] [120 80] [80 120]]]
+    (t/testing (str "native ellipse " width "x" height)
+      (let [{:keys [objects web-object]} (fixture)
+            child-id (first (get-in objects [(:shape-id web-object) :shapes]))
+            objects  (update objects child-id merge
+                             {:type :circle
+                              :width width :height height
+                              :selrect (grc/make-rect 20 20 width height)
+                              :points (points 20 20 width height)})
+            artifact (:artifact
+                      (materialize
+                       {:mode contract/portable-provider
+                        :studio-uri "https://studio.example/"
+                        :objects objects
+                        :web-object web-object}))
+            styles   (get-in artifact [:document :styles])
+            srcdoc   (contract/artifact-srcdoc artifact)]
+        (t/is (contract/portable-artifact? artifact))
+        (t/is (str/includes? (get-in artifact [:document :markup]) "shape circle"))
+        (t/is (= 4 (count (re-seq #"border-(?:start|end)-(?:start|end)-radius: 50%;" styles))))
+        (t/is (str/includes? srcdoc styles))
+        (t/is (= "surface"
+                 (-> artifact :designTokens :appliedByShape vals first (get "fill"))))))))
+
 (t/deftest artifact-motion-plan-resolves-dtcg-values-before-runtime-selection
   (let [{:keys [objects web-object]} (fixture)
         artifact (:artifact
